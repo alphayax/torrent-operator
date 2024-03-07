@@ -7,6 +7,32 @@ rules:
 - apiGroups:
   - torrent.alphayax.com
   resources:
+  - qbittorrentservers
+  verbs:
+  - create
+  - delete
+  - get
+  - list
+  - patch
+  - update
+  - watch
+- apiGroups:
+  - torrent.alphayax.com
+  resources:
+  - qbittorrentservers/finalizers
+  verbs:
+  - update
+- apiGroups:
+  - torrent.alphayax.com
+  resources:
+  - qbittorrentservers/status
+  verbs:
+  - get
+  - patch
+  - update
+- apiGroups:
+  - torrent.alphayax.com
+  resources:
   - torrents
   verbs:
   - create

@@ -18,6 +18,7 @@ package v1alpha1
 
 import (
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
+	"k8s.io/apimachinery/pkg/types"
 )
 
 // EDIT THIS FILE!  THIS IS SCAFFOLDING FOR YOU TO OWN!
@@ -27,21 +28,48 @@ import (
 type TorrentSpec struct {
 	// INSERT ADDITIONAL SPEC FIELDS - desired state of cluster
 	// Important: Run "make" to regenerate code after modifying this file
+	ServerRef ServerRef `json:"serverRef,omitempty"`
+	Hash      string    `json:"hash,omitempty"`
+	Name      string    `json:"name,omitempty"`
+	Size      int       `json:"size,omitempty"`
 
-	// Foo is an example field of Torrent. Edit torrent_types.go to remove/update
-	Foo string `json:"foo,omitempty"`
+	URL                 string `json:"url,omitempty"`
+	Paused              bool   `json:"paused,omitempty"`
+	DeleteFilesOnRemove bool   `json:"deleteFilesOnRemove,omitempty"`
+	//TorrentFile 	   string `json:"torrentFile,omitempty"`
+	//DownloadDir string    `json:"downloadDir,omitempty"`
+}
+
+type ServerRef struct {
+	Namespace string `json:"namespace"`
+	Name      string `json:"name"`
+}
+
+func (s *ServerRef) GetNamespacedName() types.NamespacedName {
+	return types.NamespacedName{
+		Namespace: s.Namespace,
+		Name:      s.Name,
+	}
 }
 
 // TorrentStatus defines the observed state of Torrent
 type TorrentStatus struct {
 	// INSERT ADDITIONAL STATUS FIELD - define observed state of cluster
 	// Important: Run "make" to regenerate code after modifying this file
+	State    string `json:"state,omitempty"`
+	Ratio    string `json:"ratio,omitempty"`
+	Progress string `json:"progress,omitempty"`
+	DlSpeed  int    `json:"dlSpeed,omitempty"`
+	UpSpeed  int    `json:"upSpeed,omitempty"`
 }
 
 //+kubebuilder:object:root=true
 //+kubebuilder:subresource:status
 
 // Torrent is the Schema for the torrents API
+// +kubebuilder:printcolumn:name="Content",type=string,JSONPath=`.spec.name`
+// +kubebuilder:printcolumn:name="Status",type=string,JSONPath=`.status.state`
+// +kubebuilder:printcolumn:name="Ratio",type=string,JSONPath=`.status.ratio`
 type Torrent struct {
 	metav1.TypeMeta   `json:",inline"`
 	metav1.ObjectMeta `json:"metadata,omitempty"`

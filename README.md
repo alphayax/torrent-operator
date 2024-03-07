@@ -1,5 +1,21 @@
-# torrent-operator
-// TODO(user): Add simple overview of use/purpose
+[![Go Report Card](https://goreportcard.com/badge/github.com/alphayax/torrent-operator)](https://goreportcard.com/report/github.com/alphayax/torrent-operator)
+[![GoDoc](https://godoc.org/github.com/alphayax/torrent-operator?status.svg)](https://pkg.go.dev/github.com/alphayax/torrent-operator)
+
+# torrent-operator (WIP: WORK IN PROGRESS !!!)
+
+> WIP: I've made this project to test the kubebuilder framework and to learn how to create a kubernetes operator.
+
+Manage your torrents with a kubernetes operator.
+
+Works with:
+- [qBittorrent](https://www.qbittorrent.org/)
+
+Will work in the future with:
+- [Transmission](https://transmissionbt.com/)
+- [Deluge](https://deluge-torrent.org/)
+
+
+---
 
 ## Description
 // TODO(user): An in-depth paragraph about your project and overview of use

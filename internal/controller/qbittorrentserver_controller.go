@@ -18,6 +18,11 @@ package controller
 
 import (
 	"context"
+	"fmt"
+	qbt "github.com/KnutZuidema/go-qbittorrent"
+	"github.com/KnutZuidema/go-qbittorrent/pkg/model"
+	"github.com/sirupsen/logrus"
+	"k8s.io/apimachinery/pkg/api/errors"
 
 	"k8s.io/apimachinery/pkg/runtime"
 	ctrl "sigs.k8s.io/controller-runtime"
@@ -47,11 +52,147 @@ type QBittorrentServerReconciler struct {
 // For more details, check Reconcile and its Result here:
 // - https://pkg.go.dev/sigs.k8s.io/controller-runtime@v0.17.0/pkg/reconcile
 func (r *QBittorrentServerReconciler) Reconcile(ctx context.Context, req ctrl.Request) (ctrl.Result, error) {
-	_ = log.FromContext(ctx)
+	logger := log.FromContext(ctx)
+	logger.Info("*** RECONCILE qBittorrent ***")
 
-	// TODO(user): your logic here
+	qBittorrent := torrentv1alpha1.QBittorrentServer{}
+	if err := r.Get(ctx, req.NamespacedName, &qBittorrent); err != nil {
+		if errors.IsNotFound(err) {
+			// Server has been deleted
+			// TODO: Remove torrent linked to this server (without interacting with torrent API)
+			return ctrl.Result{}, nil
+		}
+		// Unknown error (We don't go further)
+		return ctrl.Result{}, err
+	}
+
+	// Server has been created
+	qBittorrentUrl := qBittorrent.Spec.Server
+	qb := qbt.NewClient(qBittorrentUrl, logrus.New())
+	err := qb.Login(qBittorrent.Spec.Username, qBittorrent.Spec.Password)
+	if err != nil {
+		return ctrl.Result{}, err
+	}
+
+	torrents, err := qb.Torrent.GetList(nil)
+	if err != nil {
+		return ctrl.Result{}, err
+	}
+
+	logger.Info("* Refresh torrents from server")
+	for _, torrent := range torrents {
+		if err := r.UpsertTorrent(ctx, req, torrent); err != nil {
+			logger.Error(err, "Error while torrent upsert")
+		}
+	}
+
+	// TODO: Check all torrents and try to find the one that are not in the list anymore (deleted manualy form server)
+	// Check for pending torrents
+	if qBittorrent.GetAnnotations()["pendingTorrents"] != "" {
+		logger.Info("--- Pending torrents found")
+		for _, name := range qBittorrent.Status.PendingTorrents {
+			logger.Info("--- Adding pending torrent", "Name", name)
+			torrent := torrentv1alpha1.Torrent{}
+			if err := r.Get(ctx, client.ObjectKey{Namespace: req.Namespace, Name: name}, &torrent); err != nil {
+				if errors.IsNotFound(err) {
+					// Torrent not found ?!?
+					logger.Error(err, "!!! Torrent not found", "Name", name)
+					continue
+				}
+				// Unknown error
+				logger.Error(err, "!!! Error while getting torrent", "Name", name)
+				continue
+			}
+
+			if torrent.Spec.URL == "" {
+				// Magnet Not found
+				logger.Error(err, "!!! Magnet not found", "Name", name)
+				continue
+			} else {
+				logger.Info("--- Magnet found", "URL", torrent.Spec.URL)
+			}
+
+			err := qb.Torrent.AddURLs([]string{torrent.Spec.URL}, nil)
+			if err != nil {
+				logger.Error(err, "!!! Error while adding torrent", "Name", name)
+				continue
+			}
+
+			if err := r.Delete(ctx, &torrent); err != nil {
+				logger.Error(err, "!!! Error while deleting torrent", "Name", name)
+				continue
+			}
+		}
+
+		qBittorrent.Status.PendingTorrents = nil
+		if err := r.Status().Update(ctx, &qBittorrent); err != nil {
+			logger.Error(err, "!!! Error while updating qBittorrent status")
+		}
+
+		anno := qBittorrent.GetAnnotations()
+		delete(anno, "pendingTorrents")
+		qBittorrent.SetAnnotations(anno)
+		err := r.Client.Update(ctx, &qBittorrent)
+		if err != nil {
+			logger.Error(err, "!!! Error while updating qBittorrent annotations")
+		}
+	} else {
+		logger.Info("--- NO Pending torrents found")
+	}
 
 	return ctrl.Result{}, nil
+}
+
+func (r *QBittorrentServerReconciler) UpsertTorrent(ctx context.Context, req ctrl.Request, qbTorrent *model.Torrent) error {
+	logger := log.FromContext(ctx)
+	torrent := torrentv1alpha1.Torrent{}
+
+	namespacedName := client.ObjectKey{
+		Namespace: req.Namespace,
+		Name:      qbTorrent.Hash,
+	}
+
+	err := r.Get(ctx, namespacedName, &torrent)
+	if err != nil && !errors.IsNotFound(err) {
+		return err
+	}
+
+	torrent.Name = qbTorrent.Hash
+	torrent.Namespace = req.Namespace
+
+	// Update torrent spec
+	torrent.Spec.Hash = qbTorrent.Hash
+	torrent.Spec.Name = qbTorrent.Name
+	torrent.Spec.Size = qbTorrent.Size
+
+	// TODO: Find all the status matching the pause state
+	torrent.Spec.Paused = qbTorrent.State == "pausedUP" || qbTorrent.State == "pausedDL"
+
+	torrent.Spec.ServerRef = torrentv1alpha1.ServerRef{
+		Namespace: req.Namespace,
+		Name:      req.Name,
+	}
+
+	if errors.IsNotFound(err) {
+		// Create the torrent
+		logger.Info("* Create torrent")
+		if err := r.Create(ctx, &torrent); err != nil {
+			return err
+		}
+	} else {
+		// Update the torrent
+		if err := r.Update(ctx, &torrent); err != nil {
+			return err
+		}
+	}
+
+	// Update torrent status
+	torrent.Status.State = string(qbTorrent.State)
+	torrent.Status.Progress = fmt.Sprintf("%.2f", qbTorrent.Progress)
+	torrent.Status.Ratio = fmt.Sprintf("%.3f", qbTorrent.Ratio)
+	torrent.Status.DlSpeed = qbTorrent.Dlspeed
+	torrent.Status.UpSpeed = qbTorrent.Upspeed
+	return r.Status().Update(ctx, &torrent)
 }
 
 // SetupWithManager sets up the controller with the Manager.

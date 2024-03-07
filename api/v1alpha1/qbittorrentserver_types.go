@@ -29,13 +29,16 @@ type QBittorrentServerSpec struct {
 	// Important: Run "make" to regenerate code after modifying this file
 
 	// Foo is an example field of QBittorrentServer. Edit qbittorrentserver_types.go to remove/update
-	Foo string `json:"foo,omitempty"`
+	Server   string `json:"server,omitempty"`
+	Username string `json:"username,omitempty"`
+	Password string `json:"password,omitempty"`
 }
 
 // QBittorrentServerStatus defines the observed state of QBittorrentServer
 type QBittorrentServerStatus struct {
 	// INSERT ADDITIONAL STATUS FIELD - define observed state of cluster
 	// Important: Run "make" to regenerate code after modifying this file
+	PendingTorrents []string `json:"pendingTorrents,omitempty"`
 }
 
 //+kubebuilder:object:root=true

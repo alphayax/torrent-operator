@@ -18,7 +18,8 @@ package controller
 
 import (
 	"context"
-
+	"fmt"
+	"k8s.io/apimachinery/pkg/api/errors"
 	"k8s.io/apimachinery/pkg/runtime"
 	ctrl "sigs.k8s.io/controller-runtime"
 	"sigs.k8s.io/controller-runtime/pkg/client"
@@ -39,19 +40,64 @@ type TorrentReconciler struct {
 
 // Reconcile is part of the main kubernetes reconciliation loop which aims to
 // move the current state of the cluster closer to the desired state.
-// TODO(user): Modify the Reconcile function to compare the state specified by
-// the Torrent object against the actual cluster state, and then
-// perform operations to make the cluster state reflect the state specified by
-// the user.
-//
 // For more details, check Reconcile and its Result here:
 // - https://pkg.go.dev/sigs.k8s.io/controller-runtime@v0.17.0/pkg/reconcile
 func (r *TorrentReconciler) Reconcile(ctx context.Context, req ctrl.Request) (ctrl.Result, error) {
-	_ = log.FromContext(ctx)
+	logger := log.FromContext(ctx)
+	logger.Info("*** RECONCILE torrent ***")
 
-	// TODO(user): your logic here
+	torrent := torrentv1alpha1.Torrent{}
+	if err := r.Get(ctx, req.NamespacedName, &torrent); err != nil {
+		if errors.IsNotFound(err) {
+			// Torrent has been deleted
+			// Todo: If server exists, delete the torrent from the server
+			logger.Info("--- Torrent deleted")
+			return ctrl.Result{}, nil
+		}
+		// Unknown error
+		return ctrl.Result{}, err
+	}
+
+	if torrent.Spec.URL != "" {
+		logger.Info("--- Add Torrent (via URL)", "URL", torrent.Spec.URL)
+		err := r.addTorrentToServer(ctx, req, torrent.Spec)
+		if err != nil {
+			return ctrl.Result{}, err
+		}
+	}
 
 	return ctrl.Result{}, nil
+}
+
+func (r *TorrentReconciler) addTorrentToServer(ctx context.Context, req ctrl.Request, spec torrentv1alpha1.TorrentSpec) error {
+
+	// TODO: Handle case where server is not qBittorrent
+
+	qBittorrent := torrentv1alpha1.QBittorrentServer{}
+	if err := r.Get(ctx, spec.ServerRef.GetNamespacedName(), &qBittorrent); err != nil {
+		if errors.IsNotFound(err) {
+			// Server has been deleted
+			return fmt.Errorf("unable to find server %s/%s", spec.ServerRef.Namespace, spec.ServerRef.Name)
+		}
+		// Unknown error
+		return err
+	}
+
+	// Server Exists
+	logger := log.FromContext(ctx)
+	logger.Info("** Adding torrent to server", "Server", qBittorrent.Name, "Torrent", req.Name)
+
+	qBittorrent.Status.PendingTorrents = append(qBittorrent.Status.PendingTorrents, req.Name)
+	if err := r.Status().Update(ctx, &qBittorrent); err != nil {
+		return err
+	}
+
+	anno := qBittorrent.GetAnnotations()
+	anno["pendingTorrents"] = "true"
+	qBittorrent.SetAnnotations(anno)
+	return r.Client.Update(ctx, &qBittorrent)
+
+	//return nil
 }
 
 // SetupWithManager sets up the controller with the Manager.
