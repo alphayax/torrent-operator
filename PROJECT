@@ -17,4 +17,13 @@ resources:
   kind: Torrent
   path: github.com/alphayax/torrent-operator/api/v1alpha1
   version: v1alpha1
+- api:
+    crdVersion: v1
+    namespaced: true
+  controller: true
+  domain: alphayax.com
+  group: torrent
+  kind: QBittorrentServer
+  path: github.com/alphayax/torrent-operator/api/v1alpha1
+  version: v1alpha1
 version: "3"

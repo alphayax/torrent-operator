@@ -1,0 +1,27 @@
+# permissions for end users to view qbittorrentservers.
+apiVersion: rbac.authorization.k8s.io/v1
+kind: ClusterRole
+metadata:
+  labels:
+    app.kubernetes.io/name: clusterrole
+    app.kubernetes.io/instance: qbittorrentserver-viewer-role
+    app.kubernetes.io/component: rbac
+    app.kubernetes.io/created-by: torrent-operator
+    app.kubernetes.io/part-of: torrent-operator
+    app.kubernetes.io/managed-by: kustomize
+  name: qbittorrentserver-viewer-role
+rules:
+- apiGroups:
+  - torrent.alphayax.com
+  resources:
+  - qbittorrentservers
+  verbs:
+  - get
+  - list
+  - watch
+- apiGroups:
+  - torrent.alphayax.com
+  resources:
+  - qbittorrentservers/status
+  verbs:
+  - get

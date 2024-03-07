@@ -1,0 +1,12 @@
+apiVersion: torrent.alphayax.com/v1alpha1
+kind: QBittorrentServer
+metadata:
+  labels:
+    app.kubernetes.io/name: qbittorrentserver
+    app.kubernetes.io/instance: qbittorrentserver-sample
+    app.kubernetes.io/part-of: torrent-operator
+    app.kubernetes.io/managed-by: kustomize
+    app.kubernetes.io/created-by: torrent-operator
+  name: qbittorrentserver-sample
+spec:
+  # TODO(user): Add fields here
