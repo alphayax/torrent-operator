@@ -7,4 +7,14 @@ layout:
 - go.kubebuilder.io/v4
 projectName: torrent-operator
 repo: github.com/alphayax/torrent-operator
+resources:
+- api:
+    crdVersion: v1
+    namespaced: true
+  controller: true
+  domain: alphayax.com
+  group: torrent
+  kind: Torrent
+  path: github.com/alphayax/torrent-operator/api/v1alpha1
+  version: v1alpha1
 version: "3"

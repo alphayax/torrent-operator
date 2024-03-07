@@ -1,0 +1,31 @@
+# permissions for end users to edit torrents.
+apiVersion: rbac.authorization.k8s.io/v1
+kind: ClusterRole
+metadata:
+  labels:
+    app.kubernetes.io/name: clusterrole
+    app.kubernetes.io/instance: torrent-editor-role
+    app.kubernetes.io/component: rbac
+    app.kubernetes.io/created-by: torrent-operator
+    app.kubernetes.io/part-of: torrent-operator
+    app.kubernetes.io/managed-by: kustomize
+  name: torrent-editor-role
+rules:
+- apiGroups:
+  - torrent.alphayax.com
+  resources:
+  - torrents
+  verbs:
+  - create
+  - delete
+  - get
+  - list
+  - patch
+  - update
+  - watch
+- apiGroups:
+  - torrent.alphayax.com
+  resources:
+  - torrents/status
+  verbs:
+  - get

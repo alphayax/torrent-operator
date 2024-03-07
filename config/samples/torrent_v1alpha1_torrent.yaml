@@ -1,0 +1,12 @@
+apiVersion: torrent.alphayax.com/v1alpha1
+kind: Torrent
+metadata:
+  labels:
+    app.kubernetes.io/name: torrent
+    app.kubernetes.io/instance: torrent-sample
+    app.kubernetes.io/part-of: torrent-operator
+    app.kubernetes.io/managed-by: kustomize
+    app.kubernetes.io/created-by: torrent-operator
+  name: torrent-sample
+spec:
+  # TODO(user): Add fields here
