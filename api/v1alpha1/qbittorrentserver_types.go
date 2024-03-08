@@ -39,12 +39,14 @@ type QBittorrentServerStatus struct {
 	// INSERT ADDITIONAL STATUS FIELD - define observed state of cluster
 	// Important: Run "make" to regenerate code after modifying this file
 	PendingTorrents []string `json:"pendingTorrents,omitempty"`
+	State           string   `json:"state,omitempty"`
 }
 
 //+kubebuilder:object:root=true
 //+kubebuilder:subresource:status
 
 // QBittorrentServer is the Schema for the qbittorrentservers API
+// +kubebuilder:printcolumn:name="Status",type=string,JSONPath=`.status.state`
 type QBittorrentServer struct {
 	metav1.TypeMeta   `json:",inline"`
 	metav1.ObjectMeta `json:"metadata,omitempty"`

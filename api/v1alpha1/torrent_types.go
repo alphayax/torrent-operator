@@ -31,7 +31,6 @@ type TorrentSpec struct {
 	ServerRef ServerRef `json:"serverRef,omitempty"`
 	Hash      string    `json:"hash,omitempty"`
 	Name      string    `json:"name,omitempty"`
-	Size      int       `json:"size,omitempty"`
 
 	URL                 string `json:"url,omitempty"`
 	Paused              bool   `json:"paused,omitempty"`
@@ -56,20 +55,36 @@ func (s *ServerRef) GetNamespacedName() types.NamespacedName {
 type TorrentStatus struct {
 	// INSERT ADDITIONAL STATUS FIELD - define observed state of cluster
 	// Important: Run "make" to regenerate code after modifying this file
-	State    string `json:"state,omitempty"`
-	Ratio    string `json:"ratio,omitempty"`
-	Progress string `json:"progress,omitempty"`
-	DlSpeed  int    `json:"dlSpeed,omitempty"`
-	UpSpeed  int    `json:"upSpeed,omitempty"`
+	State      string             `json:"state,omitempty"`
+	Ratio      string             `json:"ratio,omitempty"`
+	Progress   string             `json:"progress,omitempty"`
+	Size       string             `json:"size"`
+	Downloaded string             `json:"downloaded"`
+	Uploaded   string             `json:"uploaded"`
+	Eta        string             `json:"eta"`
+	Speed      TorrentStatusSpeed `json:"speed"`
+	Peers      TorrentStatusPeers `json:"peers"`
+}
+
+type TorrentStatusPeers struct {
+	Seeders  string `json:"seeders"`
+	Leechers string `json:"leechers"`
+}
+
+type TorrentStatusSpeed struct {
+	DlSpeed int `json:"dlSpeed"`
+	UpSpeed int `json:"upSpeed"`
 }
 
 //+kubebuilder:object:root=true
 //+kubebuilder:subresource:status
 
 // Torrent is the Schema for the torrents API
-// +kubebuilder:printcolumn:name="Content",type=string,JSONPath=`.spec.name`
 // +kubebuilder:printcolumn:name="Status",type=string,JSONPath=`.status.state`
 // +kubebuilder:printcolumn:name="Ratio",type=string,JSONPath=`.status.ratio`
+// +kubebuilder:printcolumn:name="Seed",type=string,JSONPath=`.status.peers.seeders`
+// +kubebuilder:printcolumn:name="Leech",type=string,JSONPath=`.status.peers.leechers`
+// +kubebuilder:printcolumn:name="Content",type=string,JSONPath=`.spec.name`
 type Torrent struct {
 	metav1.TypeMeta   `json:",inline"`
 	metav1.ObjectMeta `json:"metadata,omitempty"`

@@ -74,3 +74,5 @@ require (
 	sigs.k8s.io/structured-merge-diff/v4 v4.4.1 // indirect
 	sigs.k8s.io/yaml v1.4.0 // indirect
 )
+
+replace github.com/KnutZuidema/go-qbittorrent => github.com/sakuradon99/go-qbittorrent v0.0.0-20231124181421-6f5d4b47f11f

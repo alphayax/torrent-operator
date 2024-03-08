@@ -18,11 +18,11 @@ package controller
 
 import (
 	"context"
-	"fmt"
 	qbt "github.com/KnutZuidema/go-qbittorrent"
 	"github.com/KnutZuidema/go-qbittorrent/pkg/model"
 	"github.com/sirupsen/logrus"
 	"k8s.io/apimachinery/pkg/api/errors"
+	"time"
 
 	"k8s.io/apimachinery/pkg/runtime"
 	ctrl "sigs.k8s.io/controller-runtime"
@@ -71,6 +71,12 @@ func (r *QBittorrentServerReconciler) Reconcile(ctx context.Context, req ctrl.Re
 	qb := qbt.NewClient(qBittorrentUrl, logrus.New())
 	err := qb.Login(qBittorrent.Spec.Username, qBittorrent.Spec.Password)
 	if err != nil {
+		return ctrl.Result{}, err
+	}
+
+	// Update state
+	qBittorrent.Status.State = "Connected"
+	if err := r.Status().Update(ctx, &qBittorrent); err != nil {
 		return ctrl.Result{}, err
 	}
 
@@ -140,7 +146,14 @@ func (r *QBittorrentServerReconciler) Reconcile(ctx context.Context, req ctrl.Re
 		logger.Info("--- NO Pending torrents found")
 	}
 
-	return ctrl.Result{}, nil
+	// Handle Pause and UnPause
+	//qb.Torrent.ResumeTorrents(hash)
+	//qb.Torrent.StopTorrents(hash)
+
+	logger.Info("--- Requeue after 1 minutes")
+	return ctrl.Result{
+		RequeueAfter: 1 * time.Minute,
+	}, nil
 }
 
 func (r *QBittorrentServerReconciler) UpsertTorrent(ctx context.Context, req ctrl.Request, qbTorrent *model.Torrent) error {
@@ -160,13 +173,10 @@ func (r *QBittorrentServerReconciler) UpsertTorrent(ctx context.Context, req ctr
 	torrent.Name = qbTorrent.Hash
 	torrent.Namespace = req.Namespace
 
+	// TODO: WARN ! We should update STATE not SPEC (except for creation)
 	// Update torrent spec
 	torrent.Spec.Hash = qbTorrent.Hash
-	torrent.Spec.Name = qbTorrent.Name
-	torrent.Spec.Size = qbTorrent.Size
-
-	// TODO: Find all the status matching the pause state
-	torrent.Spec.Paused = qbTorrent.State == "pausedUP" || qbTorrent.State == "pausedDL"
+	torrent.Spec.Name = qbTorrent.Name // Should be in state ? we may rename the torrent
 
 	torrent.Spec.ServerRef = torrentv1alpha1.ServerRef{
 		Namespace: req.Namespace,
@@ -186,13 +196,9 @@ func (r *QBittorrentServerReconciler) UpsertTorrent(ctx context.Context, req ctr
 		}
 	}
 
-	// Update torrent status
-	torrent.Status.State = string(qbTorrent.State)
-	torrent.Status.Progress = fmt.Sprintf("%.2f", qbTorrent.Progress)
-	torrent.Status.Ratio = fmt.Sprintf("%.3f", qbTorrent.Ratio)
-	torrent.Status.DlSpeed = qbTorrent.Dlspeed
-	torrent.Status.UpSpeed = qbTorrent.Upspeed
-	return r.Status().Update(ctx, &torrent)
+	// Todo: Get all the torrent with the same serverRef and check if they are still in the list
+
+	return nil
 }
 
 // SetupWithManager sets up the controller with the Manager.

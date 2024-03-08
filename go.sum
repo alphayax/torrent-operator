@@ -1,5 +1,3 @@
-github.com/KnutZuidema/go-qbittorrent v0.0.0-20190814183140-292286ded47f h1:mrAozzB3S+qZnvhU9VuQNZ4KB1T+eAjWo7pVAOSZisU=
-github.com/KnutZuidema/go-qbittorrent v0.0.0-20190814183140-292286ded47f/go.mod h1:1Cf/UZ8xAfNXunIWGcyJxdSKUkEpCBF8TwU+XO5h4bo=
 github.com/beorn7/perks v1.0.1 h1:VlbKKnNfV8bJzeqoa4cOKqO6bYr3WgKZxO8Z16+hsOM=
 github.com/beorn7/perks v1.0.1/go.mod h1:G2ZrVWU2WbWT9wwq4/hrbKbnv/1ERSJQ0ibhJ6rlkpw=
 github.com/cespare/xxhash/v2 v2.2.0 h1:DC2CZ1Ep5Y4k3ZQ899DldepgrayRUGE6BBZ/cd9Cj44=
@@ -101,6 +99,8 @@ github.com/prometheus/procfs v0.12.0 h1:jluTpSng7V9hY0O2R9DzzJHYb2xULk9VTR1V1R/k
 github.com/prometheus/procfs v0.12.0/go.mod h1:pcuDEFsWDnvcgNzo4EEweacyhjeA9Zk3cnaOZAZEfOo=
 github.com/rogpeppe/go-internal v1.10.0 h1:TMyTOH3F/DB16zRVcYyreMH6GnZZrwQVAoYjRBZyWFQ=
 github.com/rogpeppe/go-internal v1.10.0/go.mod h1:UQnix2H7Ngw/k4C5ijL5+65zddjncjaFoBhdsK/akog=
+github.com/sakuradon99/go-qbittorrent v0.0.0-20231124181421-6f5d4b47f11f h1:rGC6n8GRoCidJZC1AR4GyXmzFPclc93xVN27kV+CoXQ=
+github.com/sakuradon99/go-qbittorrent v0.0.0-20231124181421-6f5d4b47f11f/go.mod h1:1Cf/UZ8xAfNXunIWGcyJxdSKUkEpCBF8TwU+XO5h4bo=
 github.com/sirupsen/logrus v1.4.2/go.mod h1:tLMulIdttU9McNUspp0xgXVQah82FyeX6MwdIuYE2rE=
 github.com/sirupsen/logrus v1.9.0 h1:trlNQbNUG3OdDrDil03MCb1H2o9nJ1x4/5LYw7byDE0=
 github.com/sirupsen/logrus v1.9.0/go.mod h1:naHLuLoDiP4jHNo9R0sCBMtWGeIprob74mVsIT4qYEQ=
