@@ -32,9 +32,9 @@ type TorrentSpec struct {
 	Hash      string    `json:"hash,omitempty"`
 	Name      string    `json:"name,omitempty"`
 
-	URL                 string `json:"url,omitempty"`
-	Paused              bool   `json:"paused,omitempty"`
-	DeleteFilesOnRemove bool   `json:"deleteFilesOnRemove,omitempty"`
+	URL       string `json:"url,omitempty"`
+	Paused    bool   `json:"paused,omitempty"`
+	KeepFiles bool   `json:"KeepFiles,omitempty"`
 	//TorrentFile 	   string `json:"torrentFile,omitempty"`
 	//DownloadDir string    `json:"downloadDir,omitempty"`
 }

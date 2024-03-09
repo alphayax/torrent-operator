@@ -55,7 +55,7 @@ spec:
           spec:
             description: TorrentSpec defines the desired state of Torrent
             properties:
-              deleteFilesOnRemove:
+              KeepFiles:
                 type: boolean
               hash:
                 type: string
@@ -101,9 +101,6 @@ spec:
               ratio:
                 type: string
               size:
-                description: |-
-                  DlSpeed    int                `json:"dlSpeed"`
-                  UpSpeed    int                `json:"upSpeed"`
                 type: string
               speed:
                 properties:

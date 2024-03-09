@@ -75,4 +75,4 @@ require (
 	sigs.k8s.io/yaml v1.4.0 // indirect
 )
 
-replace github.com/KnutZuidema/go-qbittorrent => github.com/sakuradon99/go-qbittorrent v0.0.0-20231124181421-6f5d4b47f11f
+replace github.com/KnutZuidema/go-qbittorrent => github.com/alphayax/go-qbittorrent v0.0.0-20240309104156-fea3c797ae2f

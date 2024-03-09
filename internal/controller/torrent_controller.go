@@ -60,19 +60,31 @@ func (r *TorrentReconciler) Reconcile(ctx context.Context, req ctrl.Request) (ct
 		return ctrl.Result{}, err
 	}
 
+	// TODO Define a default server if not defined
+	// torrent.Spec.ServerRef
+
 	// Connect to server
 	qb, err := r.connectToServer(ctx, torrent.Spec.ServerRef)
 	if err != nil {
 		return ctrl.Result{}, err
 	}
 
-	// TODO: Use a specific TorrentRequest object ?
-	if torrent.Spec.URL != "" {
+	// In case of new torrent (Hash is empty)
+	if torrent.Spec.Hash == "" && torrent.Spec.URL != "" {
 		logger.Info("--- Add Torrent (via URL)", "URL", torrent.Spec.URL)
-		err := r.addTorrentToServer(ctx, req, torrent.Spec)
-		if err != nil {
-			return ctrl.Result{}, err
+		URLs := []string{torrent.Spec.URL}
+		torrentTag := fmt.Sprintf("k8s-%s", req.Name)
+		torrentOptions := &model.AddTorrentsOptions{
+			Tags: torrentTag,
 		}
+		if err := qb.Torrent.AddURLs(URLs, torrentOptions); err != nil {
+			logger.Error(err, "!!! Error while adding torrent")
+		}
+
+		// Stop here. Trigger server for resync and hash update
+		return ctrl.Result{
+			RequeueAfter: 2 * time.Minute,
+		}, err
 	}
 
 	// Pause/Resume Torrent
@@ -96,6 +108,11 @@ func (r *TorrentReconciler) Reconcile(ctx context.Context, req ctrl.Request) (ct
 		return ctrl.Result{}, err
 	}
 
+	if len(list) == 0 {
+		// TODO: Better handeling: We don't requeue here, but we should handle the thing better
+		return ctrl.Result{}, nil
+	}
+
 	return ctrl.Result{
 		RequeueAfter: 1 * time.Minute,
 	}, r.updateTorrentState(ctx, &torrent, list[0])
@@ -117,6 +134,8 @@ func (r *TorrentReconciler) updateTorrentState(ctx context.Context, torrent *tor
 	return r.Status().Update(ctx, torrent)
 }
 
+// HumanReadableSize Convert a size in bytes to a human readable size
+// TODO: Export to another file
 func HumanReadableSize(size int64) string {
 	units := []string{"B", "KB", "MB", "GB", "TB"}
 	unit := 0
@@ -140,41 +159,6 @@ func (r *TorrentReconciler) connectToServer(ctx context.Context, ref torrentv1al
 	err := qb.Login(qBittorrent.Spec.Username, qBittorrent.Spec.Password)
 
 	return qb, err
-}
-
-func (r *TorrentReconciler) getServer(ctx context.Context, spec torrentv1alpha1.TorrentSpec) (*torrentv1alpha1.QBittorrentServer, error) {
-	// TODO: Handle multiple type of servers
-	qBittorrent := &torrentv1alpha1.QBittorrentServer{}
-	if err := r.Get(ctx, spec.ServerRef.GetNamespacedName(), qBittorrent); err != nil {
-		return nil, err
-	}
-	return qBittorrent, nil
-}
-
-func (r *TorrentReconciler) addTorrentToServer(ctx context.Context, req ctrl.Request, spec torrentv1alpha1.TorrentSpec) error {
-
-	// TODO: Handle case where server is not qBittorrent
-	qBittorrent, err := r.getServer(ctx, spec)
-	if err != nil {
-		return err
-	}
-
-	// Server Exists
-	logger := log.FromContext(ctx)
-	logger.Info("** Adding torrent to server", "Server", qBittorrent.Name, "Torrent", req.Name)
-
-	qBittorrent.Status.PendingTorrents = append(qBittorrent.Status.PendingTorrents, req.Name)
-	if err := r.Status().Update(ctx, qBittorrent); err != nil {
-		return err
-	}
-
-	// TODO: Think about using a configmap or else for orders to server
-	anno := qBittorrent.GetAnnotations()
-	anno["pendingTorrents"] = "true"
-	qBittorrent.SetAnnotations(anno)
-	return r.Client.Update(ctx, qBittorrent)
-
-	//return nil
 }
 
 // SetupWithManager sets up the controller with the Manager.

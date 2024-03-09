@@ -22,6 +22,7 @@ import (
 	"github.com/KnutZuidema/go-qbittorrent/pkg/model"
 	"github.com/sirupsen/logrus"
 	"k8s.io/apimachinery/pkg/api/errors"
+	"strings"
 	"time"
 
 	"k8s.io/apimachinery/pkg/runtime"
@@ -92,65 +93,8 @@ func (r *QBittorrentServerReconciler) Reconcile(ctx context.Context, req ctrl.Re
 		}
 	}
 
-	// TODO: Check all torrents and try to find the one that are not in the list anymore (deleted manualy form server)
-	// Check for pending torrents
-	if qBittorrent.GetAnnotations()["pendingTorrents"] != "" {
-		logger.Info("--- Pending torrents found")
-		for _, name := range qBittorrent.Status.PendingTorrents {
-			logger.Info("--- Adding pending torrent", "Name", name)
-			torrent := torrentv1alpha1.Torrent{}
-			if err := r.Get(ctx, client.ObjectKey{Namespace: req.Namespace, Name: name}, &torrent); err != nil {
-				if errors.IsNotFound(err) {
-					// Torrent not found ?!?
-					logger.Error(err, "!!! Torrent not found", "Name", name)
-					continue
-				}
-				// Unknown error
-				logger.Error(err, "!!! Error while getting torrent", "Name", name)
-				continue
-			}
+	// TODO: Check all torrents and try to find the one that are not in the list anymore (deleted manually form server)
 
-			if torrent.Spec.URL == "" {
-				// Magnet Not found
-				logger.Error(err, "!!! Magnet not found", "Name", name)
-				continue
-			} else {
-				logger.Info("--- Magnet found", "URL", torrent.Spec.URL)
-			}
-
-			err := qb.Torrent.AddURLs([]string{torrent.Spec.URL}, nil)
-			if err != nil {
-				logger.Error(err, "!!! Error while adding torrent", "Name", name)
-				continue
-			}
-
-			if err := r.Delete(ctx, &torrent); err != nil {
-				logger.Error(err, "!!! Error while deleting torrent", "Name", name)
-				continue
-			}
-		}
-
-		qBittorrent.Status.PendingTorrents = nil
-		if err := r.Status().Update(ctx, &qBittorrent); err != nil {
-			logger.Error(err, "!!! Error while updating qBittorrent status")
-		}
-
-		anno := qBittorrent.GetAnnotations()
-		delete(anno, "pendingTorrents")
-		qBittorrent.SetAnnotations(anno)
-		err := r.Client.Update(ctx, &qBittorrent)
-		if err != nil {
-			logger.Error(err, "!!! Error while updating qBittorrent annotations")
-		}
-	} else {
-		logger.Info("--- NO Pending torrents found")
-	}
-
-	// Handle Pause and UnPause
-	//qb.Torrent.ResumeTorrents(hash)
-	//qb.Torrent.StopTorrents(hash)
-
-	logger.Info("--- Requeue after 1 minutes")
 	return ctrl.Result{
 		RequeueAfter: 1 * time.Minute,
 	}, nil
@@ -160,9 +104,19 @@ func (r *QBittorrentServerReconciler) UpsertTorrent(ctx context.Context, req ctr
 	logger := log.FromContext(ctx)
 	torrent := torrentv1alpha1.Torrent{}
 
+	torrentName := qbTorrent.Hash
+	if qbTorrent.Tags != "" {
+		TagList := strings.Split(qbTorrent.Tags, ",")
+		for _, tag := range TagList {
+			if strings.HasPrefix(tag, "k8s-") {
+				torrentName = strings.TrimPrefix(tag, "k8s-")
+			}
+		}
+	}
+
 	namespacedName := client.ObjectKey{
 		Namespace: req.Namespace,
-		Name:      qbTorrent.Hash,
+		Name:      torrentName,
 	}
 
 	err := r.Get(ctx, namespacedName, &torrent)
@@ -170,7 +124,7 @@ func (r *QBittorrentServerReconciler) UpsertTorrent(ctx context.Context, req ctr
 		return err
 	}
 
-	torrent.Name = qbTorrent.Hash
+	torrent.Name = torrentName
 	torrent.Namespace = req.Namespace
 
 	// TODO: WARN ! We should update STATE not SPEC (except for creation)
