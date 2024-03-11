@@ -18,6 +18,7 @@ package controller
 
 import (
 	"context"
+	"crypto/sha256"
 	"fmt"
 	qbt "github.com/KnutZuidema/go-qbittorrent"
 	"github.com/KnutZuidema/go-qbittorrent/pkg/model"
@@ -81,33 +82,52 @@ func (r *TorrentReconciler) Reconcile(ctx context.Context, req ctrl.Request) (ct
 			logger.Error(err, "!!! Error while adding torrent")
 		}
 
-		// Stop here. Trigger server for resync and hash update
+		// Stop here.
+		// TODO: Trigger server for resync and hash update
 		return ctrl.Result{
 			RequeueAfter: 2 * time.Minute,
 		}, err
 	}
 
+	// Refresh current torrent state
+	list, err := qb.Torrent.GetList(&model.GetTorrentListOptions{Hashes: torrent.Spec.Hash})
+	if err != nil {
+		return ctrl.Result{}, err
+	}
+	if len(list) == 0 {
+		// TODO: Better handeling: We don't requeue here, but we should handle the thing better
+		return ctrl.Result{}, nil
+	}
+	torrentInit := list[0]
+
 	// Pause/Resume Torrent
-	if torrent.Spec.Paused == true && (torrent.Status.State != "pausedUP" && torrent.Status.State != "pausedDL") {
+	if torrent.Spec.Paused == true && (torrentInit.State != "pausedUP" && torrentInit.State != "pausedDL") {
 		logger.Info("--- Pause Torrent", "Hash", torrent.Spec.Hash)
 		if err := qb.Torrent.StopTorrents([]string{torrent.Spec.Hash}); err != nil {
 			return ctrl.Result{}, err
 		} else {
 			logger.Info("--OK-- Pause torrent")
 		}
-	} else if torrent.Spec.Paused == false && (torrent.Status.State == "pausedUP" || torrent.Status.State == "pausedDL") {
+	} else if torrent.Spec.Paused == false && (torrentInit.State == "pausedUP" || torrentInit.State == "pausedDL") {
 		logger.Info("--- Resume Torrent")
 		if err := qb.Torrent.ResumeTorrents([]string{torrent.Spec.Hash}); err != nil {
 			return ctrl.Result{}, err
 		}
 	}
 
+	// Update Name
+	if torrentInit.Name != torrent.Spec.Name {
+		logger.Info("--- Rename Torrent", "Hash", torrent.Spec.Hash, "Name", torrent.Spec.Name)
+		if err := qb.Torrent.SetName(torrent.Spec.Hash, torrent.Spec.Name); err != nil {
+			return ctrl.Result{}, err
+		}
+	}
+
 	// Update State
-	list, err := qb.Torrent.GetList(&model.GetTorrentListOptions{Hashes: torrent.Spec.Hash})
+	list, err = qb.Torrent.GetList(&model.GetTorrentListOptions{Hashes: torrent.Spec.Hash})
 	if err != nil {
 		return ctrl.Result{}, err
 	}
-
 	if len(list) == 0 {
 		// TODO: Better handeling: We don't requeue here, but we should handle the thing better
 		return ctrl.Result{}, nil

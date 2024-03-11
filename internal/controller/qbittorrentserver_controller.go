@@ -128,9 +128,13 @@ func (r *QBittorrentServerReconciler) UpsertTorrent(ctx context.Context, req ctr
 	torrent.Namespace = req.Namespace
 
 	// TODO: WARN ! We should update STATE not SPEC (except for creation)
+	// TODO: Update spec if the torrent is managed by Server
 	// Update torrent spec
 	torrent.Spec.Hash = qbTorrent.Hash
 	torrent.Spec.Name = qbTorrent.Name // Should be in state ? we may rename the torrent
+
+	// TODO ? Handle source (btServer or k8s def)
+	// torrent.Spec.ManagedBy
 
 	torrent.Spec.ServerRef = torrentv1alpha1.ServerRef{
 		Namespace: req.Namespace,
