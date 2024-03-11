@@ -55,18 +55,24 @@ spec:
           spec:
             description: TorrentSpec defines the DESIRED state of Torrent
             properties:
-              KeepFiles:
-                type: boolean
               hash:
+                type: string
+              keepFiles:
+                default: true
+                description: KeepFiles will keep the downloaded files after the torrent
+                  is removed
+                type: boolean
+              managedBy:
+                description: ManagedBy define if the torrent is managed by kubernetes
+                  or not
                 type: string
               name:
                 type: string
               paused:
+                default: false
+                description: Paused will add the torrent in the paused state
                 type: boolean
               serverRef:
-                description: |-
-                  INSERT ADDITIONAL SPEC FIELDS - desired state of cluster
-                  Important: Run "make" to regenerate code after modifying this file
                 properties:
                   name:
                     type: string

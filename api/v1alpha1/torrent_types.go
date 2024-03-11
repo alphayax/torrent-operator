@@ -26,16 +26,31 @@ import (
 
 // TorrentSpec defines the DESIRED state of Torrent
 type TorrentSpec struct {
-	// INSERT ADDITIONAL SPEC FIELDS - desired state of cluster
-	// Important: Run "make" to regenerate code after modifying this file
 	ServerRef ServerRef `json:"serverRef,omitempty"`
 	Hash      string    `json:"hash,omitempty"`
-	Name      string    `json:"name,omitempty"`
 
-	URL       string `json:"url,omitempty"`
-	Paused    bool   `json:"paused,omitempty"`
-	KeepFiles bool   `json:"KeepFiles,omitempty"`
+	// Name of the torrent
+	//+kubebuilder:validation:Optional
+	Name string `json:"name,omitempty"`
+
+	//+kubebuilder:validation:Optional
+	URL string `json:"url,omitempty"`
+
 	//TorrentFile 	   string `json:"torrentFile,omitempty"`
+
+	// Paused will add the torrent in the paused state
+	//+kubebuilder:validation:Optional
+	//+kubebuilder:default:=false
+	Paused bool `json:"paused"`
+
+	// KeepFiles will keep the downloaded files after the torrent is removed
+	//+kubebuilder:validation:Optional
+	//+kubebuilder:default:=true
+	KeepFiles bool `json:"keepFiles"`
+
+	// ManagedBy define if the torrent is managed by kubernetes or not
+	ManagedBy string `json:"managedBy,omitempty"`
+
 	//DownloadDir string    `json:"downloadDir,omitempty"`
 }
 
