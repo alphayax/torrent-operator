@@ -24,7 +24,7 @@ import (
 // EDIT THIS FILE!  THIS IS SCAFFOLDING FOR YOU TO OWN!
 // NOTE: json tags are required.  Any new fields you add must have json tags for the fields to be serialized.
 
-// TorrentSpec defines the desired state of Torrent
+// TorrentSpec defines the DESIRED state of Torrent
 type TorrentSpec struct {
 	// INSERT ADDITIONAL SPEC FIELDS - desired state of cluster
 	// Important: Run "make" to regenerate code after modifying this file
@@ -51,10 +51,9 @@ func (s *ServerRef) GetNamespacedName() types.NamespacedName {
 	}
 }
 
-// TorrentStatus defines the observed state of Torrent
+// TorrentStatus defines the OBSERVED state of Torrent
 type TorrentStatus struct {
-	// INSERT ADDITIONAL STATUS FIELD - define observed state of cluster
-	// Important: Run "make" to regenerate code after modifying this file
+	AddedOn    string             `json:"addedOn"`
 	State      string             `json:"state,omitempty"`
 	Ratio      string             `json:"ratio,omitempty"`
 	Progress   string             `json:"progress,omitempty"`

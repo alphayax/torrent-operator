@@ -120,6 +120,7 @@ func (r *TorrentReconciler) Reconcile(ctx context.Context, req ctrl.Request) (ct
 
 // updateTorrentState Update the torrent according to the server
 func (r *TorrentReconciler) updateTorrentState(ctx context.Context, torrent *torrentv1alpha1.Torrent, qbTorrent *model.Torrent) error {
+	torrent.Status.AddedOn = time.Unix(int64(qbTorrent.AddedOn), 0).Format(time.RFC3339)
 	torrent.Status.State = string(qbTorrent.State)
 	torrent.Status.Progress = fmt.Sprintf("%.2f%%", qbTorrent.Progress*100)
 	torrent.Status.Ratio = fmt.Sprintf("%.3f", qbTorrent.Ratio)
