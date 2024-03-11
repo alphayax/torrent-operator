@@ -146,6 +146,8 @@ func HumanReadableSize(size int64) string {
 	return fmt.Sprintf("%d %s", size, units[unit])
 }
 
+var qbtServers = map[string]*qbt.Client{}
+
 func (r *TorrentReconciler) connectToServer(ctx context.Context, ref torrentv1alpha1.ServerRef) (*qbt.Client, error) {
 	qBittorrent := &torrentv1alpha1.QBittorrentServer{}
 	if err := r.Get(ctx, ref.GetNamespacedName(), qBittorrent); err != nil {
@@ -155,10 +157,15 @@ func (r *TorrentReconciler) connectToServer(ctx context.Context, ref torrentv1al
 		return nil, err
 	}
 
-	qb := qbt.NewClient(qBittorrent.Spec.Server, logrus.New())
-	err := qb.Login(qBittorrent.Spec.Username, qBittorrent.Spec.Password)
+	// Check if we already have a client for this server
+	var err error
+	serverKey := fmt.Sprintf("%x", sha256.Sum256([]byte(qBittorrent.Spec.Server)))
+	if _, ok := qbtServers[serverKey]; !ok {
+		qbtServers[serverKey] = qbt.NewClient(qBittorrent.Spec.Server, logrus.New())
+		err = qbtServers[serverKey].Login(qBittorrent.Spec.Username, qBittorrent.Spec.Password)
+	}
 
-	return qb, err
+	return qbtServers[serverKey], err
 }
 
 // SetupWithManager sets up the controller with the Manager.
