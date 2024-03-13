@@ -18,12 +18,10 @@ package controller
 
 import (
 	"context"
-	"crypto/sha256"
 	"fmt"
 	qbt "github.com/KnutZuidema/go-qbittorrent"
 	"github.com/KnutZuidema/go-qbittorrent/pkg/model"
 	torrentv1alpha1 "github.com/alphayax/torrent-operator/api/v1alpha1"
-	"github.com/sirupsen/logrus"
 	"k8s.io/apimachinery/pkg/api/errors"
 	"k8s.io/apimachinery/pkg/runtime"
 	ctrl "sigs.k8s.io/controller-runtime"
@@ -224,8 +222,6 @@ func (r *TorrentReconciler) deleteTorrent(ctx context.Context, torrent *torrentv
 	return nil
 }
 
-var qbtServers = map[string]*qbt.Client{}
-
 func (r *TorrentReconciler) connectToServer(ctx context.Context, ref torrentv1alpha1.ServerRef) (*qbt.Client, error) {
 	qBittorrent := &torrentv1alpha1.QBittorrentServer{}
 	if err := r.Get(ctx, ref.GetNamespacedName(), qBittorrent); err != nil {
@@ -235,18 +231,7 @@ func (r *TorrentReconciler) connectToServer(ctx context.Context, ref torrentv1al
 		return nil, err
 	}
 
-	// Check if we already have a client for this server
-	var err error
-	serverKey := fmt.Sprintf("%x", sha256.Sum256([]byte(qBittorrent.Spec.ServerUri)))
-	if _, ok := qbtServers[serverKey]; !ok {
-		qbtServers[serverKey] = qbt.NewClient(qBittorrent.Spec.ServerUri, logrus.New())
-		err = qbtServers[serverKey].Login(
-			qBittorrent.Spec.Credentials.Username,
-			qBittorrent.Spec.Credentials.Password,
-		)
-	}
-
-	return qbtServers[serverKey], err
+	return connectToServer(ctx, *qBittorrent)
 }
 
 // SetupWithManager sets up the controller with the Manager.
