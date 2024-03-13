@@ -240,7 +240,10 @@ func (r *TorrentReconciler) connectToServer(ctx context.Context, ref torrentv1al
 	serverKey := fmt.Sprintf("%x", sha256.Sum256([]byte(qBittorrent.Spec.ServerUri)))
 	if _, ok := qbtServers[serverKey]; !ok {
 		qbtServers[serverKey] = qbt.NewClient(qBittorrent.Spec.ServerUri, logrus.New())
-		err = qbtServers[serverKey].Login(qBittorrent.Spec.Username, qBittorrent.Spec.Password)
+		err = qbtServers[serverKey].Login(
+			qBittorrent.Spec.Credentials.Username,
+			qBittorrent.Spec.Credentials.Password,
+		)
 	}
 
 	return qbtServers[serverKey], err

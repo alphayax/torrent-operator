@@ -21,21 +21,30 @@ import (
 )
 
 // EDIT THIS FILE!  THIS IS SCAFFOLDING FOR YOU TO OWN!
-// NOTE: json tags are required.  Any new fields you add must have json tags for the fields to be serialized.
+// NOTE: json tags are required. Any new fields you add must have json tags for the fields to be serialized.
+// Important: Run "make" to regenerate code after modifying this file
 
-// QBittorrentServerSpec defines the desired state of QBittorrentServer
+// QBittorrentServerSpec defines the DESIRED state of QBittorrentServer
 type QBittorrentServerSpec struct {
-	// INSERT ADDITIONAL SPEC FIELDS - desired state of cluster
-	// Important: Run "make" to regenerate code after modifying this file
-	ServerUri string `json:"serverUri"`
-	Username  string `json:"username,omitempty"`
-	Password  string `json:"password,omitempty"` // Todo: use a secret
+	ServerUri   string                           `json:"serverUri"`
+	Credentials QBittorrentServerSpecCredentials `json:"credentials,omitempty"`
 }
 
-// QBittorrentServerStatus defines the observed state of QBittorrentServer
+type QBittorrentServerSpecCredentials struct {
+	Username           string         `json:"username,omitempty"`
+	Password           string         `json:"password,omitempty"`
+	PasswordFromSecret ItemFromSecret `json:"passwordFromSecret,omitempty"` // TODO: Implement (not yet used)
+	UsernameFromSecret ItemFromSecret `json:"UsernameFromSecret,omitempty"` // TODO: Implement (not yet used)
+}
+
+type ItemFromSecret struct {
+	Name      string `json:"name"`
+	Namespace string `json:"namespace"`
+	Key       string `json:"key"`
+}
+
+// QBittorrentServerStatus defines the OBSERVED state of QBittorrentServer
 type QBittorrentServerStatus struct {
-	// INSERT ADDITIONAL STATUS FIELD - define observed state of cluster
-	// Important: Run "make" to regenerate code after modifying this file
 	State string `json:"state,omitempty"`
 }
 
@@ -44,6 +53,7 @@ type QBittorrentServerStatus struct {
 
 // QBittorrentServer is the Schema for the qbittorrentservers API
 // +kubebuilder:printcolumn:name="Status",type=string,JSONPath=`.status.state`
+// +kubebuilder:printcolumn:name="Uri",type=string,JSONPath=`.spec.serverUri`
 type QBittorrentServer struct {
 	metav1.TypeMeta   `json:",inline"`
 	metav1.ObjectMeta `json:"metadata,omitempty"`

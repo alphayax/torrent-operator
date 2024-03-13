@@ -70,7 +70,10 @@ func (r *QBittorrentServerReconciler) Reconcile(ctx context.Context, req ctrl.Re
 	// Server has been created
 	qBittorrentUrl := qBittorrent.Spec.ServerUri
 	qb := qbt.NewClient(qBittorrentUrl, logrus.New())
-	err := qb.Login(qBittorrent.Spec.Username, qBittorrent.Spec.Password)
+	err := qb.Login(
+		qBittorrent.Spec.Credentials.Username,
+		qBittorrent.Spec.Credentials.Password,
+	)
 	if err != nil {
 		return ctrl.Result{}, err
 	}
