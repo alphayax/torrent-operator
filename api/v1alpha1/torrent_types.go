@@ -52,6 +52,8 @@ type TorrentSpec struct {
 	KeepFiles bool `json:"keepFiles"`
 
 	// ManagedBy define if the torrent is managed by kubernetes or not
+	//+kubebuilder:validation:Optional
+	//+kubebuilder:default:=k8s
 	ManagedBy string `json:"managedBy,omitempty"`
 
 	// DownloadDir define the folder where the files will be downloaded
@@ -73,18 +75,21 @@ func (s *ServerRef) GetNamespacedName() types.NamespacedName {
 
 // TorrentStatus defines the OBSERVED state of Torrent
 type TorrentStatus struct {
-	AddedOn    string             `json:"addedOn"`
-	State      string             `json:"state,omitempty"`
-	Ratio      string             `json:"ratio,omitempty"`
-	Progress   string             `json:"progress,omitempty"`
-	Size       string             `json:"size"`
-	Downloaded string             `json:"downloaded"`
-	Uploaded   string             `json:"uploaded"`
-	Eta        string             `json:"eta"`
-	Speed      TorrentStatusSpeed `json:"speed"`
-	Peers      TorrentStatusPeers `json:"peers"`
+	AddedOn  string             `json:"addedOn"`
+	State    string             `json:"state,omitempty"`
+	Ratio    string             `json:"ratio,omitempty"`
+	Progress string             `json:"progress,omitempty"`
+	Size     string             `json:"size"`
+	Eta      string             `json:"eta"`
+	Speed    TorrentStatusSpeed `json:"speed"`
+	Peers    TorrentStatusPeers `json:"peers"`
+	Data     TorrentStatusData  `json:"data"`
 }
 
+type TorrentStatusData struct {
+	Downloaded string `json:"downloaded"`
+	Uploaded   string `json:"uploaded"`
+}
 type TorrentStatusPeers struct {
 	Seeders  string `json:"seeders"`
 	Leechers string `json:"leechers"`

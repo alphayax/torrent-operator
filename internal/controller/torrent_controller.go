@@ -50,14 +50,12 @@ func (r *TorrentReconciler) Reconcile(ctx context.Context, req ctrl.Request) (ct
 	logger := log.FromContext(ctx)
 	logger.Info("*** RECONCILE torrent ***")
 
+	// Retrieve torrent object
 	torrent := torrentv1alpha1.Torrent{}
 	if err := r.Get(ctx, req.NamespacedName, &torrent); err != nil {
 		if errors.IsNotFound(err) {
-			// Torrent has been deleted
-			// TODO: Remove torrent from server
 			return ctrl.Result{}, nil
 		}
-		// Unknown error
 		return ctrl.Result{}, err
 	}
 
@@ -104,25 +102,23 @@ func (r *TorrentReconciler) Reconcile(ctx context.Context, req ctrl.Request) (ct
 
 	// Pause/Resume Torrent
 	if torrent.Spec.Paused == true && (torrentInit.State != "pausedUP" && torrentInit.State != "pausedDL") {
-		logger.Info("--- Pause Torrent", "Hash", torrent.Spec.Hash)
 		if err := qb.Torrent.StopTorrents([]string{torrent.Spec.Hash}); err != nil {
 			return ctrl.Result{}, err
-		} else {
-			logger.Info("--OK-- Pause torrent")
 		}
+		logger.Info("--- Torrent STOPPED", "Hash", torrent.Spec.Hash)
 	} else if torrent.Spec.Paused == false && (torrentInit.State == "pausedUP" || torrentInit.State == "pausedDL") {
-		logger.Info("--- Resume Torrent")
 		if err := qb.Torrent.ResumeTorrents([]string{torrent.Spec.Hash}); err != nil {
 			return ctrl.Result{}, err
 		}
+		logger.Info("--- Resume RESUMED", "Hash", torrent.Spec.Hash)
 	}
 
 	// Update Name
 	if torrentInit.Name != torrent.Spec.Name {
-		logger.Info("--- Rename Torrent", "Hash", torrent.Spec.Hash, "Name", torrent.Spec.Name)
 		if err := qb.Torrent.SetName(torrent.Spec.Hash, torrent.Spec.Name); err != nil {
 			return ctrl.Result{}, err
 		}
+		logger.Info("--- Torrent RENAMED", "Hash", torrent.Spec.Hash, "NewName", torrent.Spec.Name)
 	}
 
 	// Update Folder
@@ -158,8 +154,8 @@ func (r *TorrentReconciler) updateTorrentState(ctx context.Context, torrent *tor
 	torrent.Status.Speed.UpSpeed = qbTorrent.Upspeed
 	torrent.Status.Eta = (time.Duration(qbTorrent.Eta) * time.Second).String()
 	torrent.Status.Size = HumanReadableSize(int64(qbTorrent.Size))
-	torrent.Status.Downloaded = HumanReadableSize(qbTorrent.Downloaded)
-	torrent.Status.Uploaded = HumanReadableSize(qbTorrent.Uploaded)
+	torrent.Status.Data.Downloaded = HumanReadableSize(qbTorrent.Downloaded)
+	torrent.Status.Data.Uploaded = HumanReadableSize(qbTorrent.Uploaded)
 	torrent.Status.Peers.Leechers = fmt.Sprintf("%d/%d", qbTorrent.NumLeechs, qbTorrent.NumIncomplete)
 	torrent.Status.Peers.Seeders = fmt.Sprintf("%d/%d", qbTorrent.NumSeeds, qbTorrent.NumComplete)
 	return r.Status().Update(ctx, torrent)
@@ -167,14 +163,24 @@ func (r *TorrentReconciler) updateTorrentState(ctx context.Context, torrent *tor
 
 // HumanReadableSize Convert a size in bytes to a human readable size
 // TODO: Export to another file
-func HumanReadableSize(size int64) string {
-	units := []string{"B", "KB", "MB", "GB", "TB"}
-	unit := 0
-	for size > 1024 {
-		size = size / 1024
-		unit++
+func HumanReadableSize(sizeInit int64) string {
+	// Handle zero size as a special case
+	if sizeInit == 0 {
+		return "0 B"
 	}
-	return fmt.Sprintf("%d %s", size, units[unit])
+
+	units := []string{"B", "KB", "MB", "GB", "TB", "PB", "EB"}
+	size := float64(sizeInit)
+
+	// Use float division for more accurate calculations
+	index := 0
+	for size >= 1024 && index < len(units)-1 {
+		size = float64(size) / 1024
+		index++
+	}
+
+	// Round the value to one decimal place and format output
+	return fmt.Sprintf("%.3f %s", size, units[index])
 }
 
 var qbtServers = map[string]*qbt.Client{}

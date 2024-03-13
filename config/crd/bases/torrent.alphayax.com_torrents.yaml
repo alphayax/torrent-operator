@@ -69,10 +69,12 @@ spec:
                   is removed
                 type: boolean
               managedBy:
+                default: k8s
                 description: ManagedBy define if the torrent is managed by kubernetes
                   or not
                 type: string
               name:
+                description: Name of the torrent
                 type: string
               paused:
                 default: false
@@ -90,12 +92,24 @@ spec:
                 type: object
               url:
                 type: string
+            required:
+            - serverRef
             type: object
           status:
             description: TorrentStatus defines the OBSERVED state of Torrent
             properties:
               addedOn:
                 type: string
+              data:
+                properties:
+                  downloaded:
+                    type: string
+                  uploaded:
+                    type: string
+                required:
+                - downloaded
+                - uploaded
+                type: object
               downloaded:
                 type: string
               eta:
@@ -132,6 +146,7 @@ spec:
                 type: string
             required:
             - addedOn
+            - data
             - downloaded
             - eta
             - peers
