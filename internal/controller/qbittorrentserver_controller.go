@@ -22,6 +22,7 @@ import (
 	"github.com/KnutZuidema/go-qbittorrent/pkg/model"
 	"github.com/sirupsen/logrus"
 	"k8s.io/apimachinery/pkg/api/errors"
+	"k8s.io/apimachinery/pkg/fields"
 	"strings"
 	"time"
 
@@ -54,7 +55,6 @@ type QBittorrentServerReconciler struct {
 // - https://pkg.go.dev/sigs.k8s.io/controller-runtime@v0.17.0/pkg/reconcile
 func (r *QBittorrentServerReconciler) Reconcile(ctx context.Context, req ctrl.Request) (ctrl.Result, error) {
 	logger := log.FromContext(ctx)
-	logger.Info("*** RECONCILE qBittorrent ***")
 
 	qBittorrent := torrentv1alpha1.QBittorrentServer{}
 	if err := r.Get(ctx, req.NamespacedName, &qBittorrent); err != nil {
@@ -81,25 +81,149 @@ func (r *QBittorrentServerReconciler) Reconcile(ctx context.Context, req ctrl.Re
 		return ctrl.Result{}, err
 	}
 
-	torrents, err := qb.Torrent.GetList(nil)
+	kubeTorrents, err := r.getKubeTorrents(ctx, req)
 	if err != nil {
 		return ctrl.Result{}, err
 	}
 
-	logger.Info("* Refresh torrents from server")
-	for _, torrent := range torrents {
-		if err := r.UpsertTorrent(ctx, req, torrent); err != nil {
-			logger.Error(err, "Error while torrent upsert")
+	serverTorrents, err := r.getServerTorrents(ctx, qb)
+	if err != nil {
+		return ctrl.Result{}, err
+	}
+
+	for hash, torrent := range serverTorrents {
+		if _, ok := kubeTorrents[hash]; !ok {
+			// If server torrent is not in kube, add it
+			logger.Info("* Upsert torrent", "hash", hash)
+			if err := r.CreateTorrent(ctx, req, torrent); err != nil {
+				logger.Error(err, "Error while torrent creation")
+			}
 		}
 	}
 
-	// TODO: Check all torrents and try to find the one that are not in the list anymore (deleted manually form server)
+	for hash, kubeTorrent := range kubeTorrents {
+		if kubeTorrent.Spec.Hash == "" {
+			// Pending torrent creation
+			continue
+		}
+		if _, ok := serverTorrents[hash]; !ok {
+			if err := r.DeleteTorrent(ctx, kubeTorrent); err != nil {
+				logger.Error(err, "Error while torrent delete")
+			}
+		}
+	}
 
 	return ctrl.Result{
 		RequeueAfter: 1 * time.Minute,
 	}, nil
 }
 
+func (r *QBittorrentServerReconciler) getServerTorrents(ctx context.Context, qb *qbt.Client) (map[string]*model.Torrent, error) {
+	torrentList, err := qb.Torrent.GetList(nil)
+	if err != nil {
+		return nil, err
+	}
+
+	serverTorrents := make(map[string]*model.Torrent)
+	for _, torrent := range torrentList {
+		serverTorrents[torrent.Hash] = torrent
+	}
+
+	return serverTorrents, nil
+}
+
+func (r *QBittorrentServerReconciler) getKubeTorrents(ctx context.Context, req ctrl.Request) (map[string]torrentv1alpha1.Torrent, error) {
+	torrentList := torrentv1alpha1.TorrentList{}
+	if err := r.List(ctx, &torrentList, &client.ListOptions{
+		Namespace:     req.Namespace,
+		FieldSelector: fields.OneTermEqualSelector("spec.serverRef.name", req.Name),
+	}); err != nil {
+		if errors.IsNotFound(err) {
+			// No torrent found
+			return nil, nil
+		}
+		// Unknown error (We don't go further)
+		return nil, err
+	}
+
+	kubeTorrents := make(map[string]torrentv1alpha1.Torrent)
+	for _, torrent := range torrentList.Items {
+		kubeTorrents[torrent.Spec.Hash] = torrent
+	}
+
+	return kubeTorrents, nil
+}
+
+func (r *QBittorrentServerReconciler) CreateTorrent(ctx context.Context, req ctrl.Request, qbTorrent *model.Torrent) error {
+	// Try to find if torrent is already in kube but not have a hash already
+	// If yes, update it
+	torrentName := qbTorrent.Hash
+	if qbTorrent.Tags != "" {
+		TagList := strings.Split(qbTorrent.Tags, ",")
+		for _, tag := range TagList {
+			if strings.HasPrefix(tag, "k8s-") {
+				torrentName = strings.TrimPrefix(tag, "k8s-")
+			}
+		}
+	}
+
+	// If a torrentName is found, it's a reference to a k8s object. Try to get it
+	torrent := torrentv1alpha1.Torrent{}
+	namespacedName := client.ObjectKey{
+		Namespace: req.Namespace,
+		Name:      torrentName,
+	}
+
+	err := r.Get(ctx, namespacedName, &torrent)
+	if err != nil && !errors.IsNotFound(err) {
+		return err
+	}
+	torrentFound := !errors.IsNotFound(err)
+
+	// Add Torrent metadata
+	torrent.Name = torrentName
+	torrent.Namespace = req.Namespace
+
+	// Add Torrent Specs
+	torrent.Spec.Hash = qbTorrent.Hash
+	torrent.Spec.Name = qbTorrent.Name
+	torrent.Spec.DownloadDir = qbTorrent.SavePath
+	torrent.Spec.ServerRef = torrentv1alpha1.ServerRef{
+		Namespace: req.Namespace,
+		Name:      req.Name,
+	}
+	torrent.Spec.ManagedBy = "btServer"
+	if torrentFound {
+		torrent.Spec.ManagedBy = "k8s"
+	}
+
+	// Create the torrent
+	if !torrentFound {
+		if err := r.Create(ctx, &torrent); err != nil {
+			return err
+		}
+		return nil
+	}
+
+	// Update the torrent
+	if err := r.Update(ctx, &torrent); err != nil {
+		return err
+	}
+	return nil
+}
+
+func (r *QBittorrentServerReconciler) DeleteTorrent(ctx context.Context, torrent torrentv1alpha1.Torrent) error {
+	logger := log.FromContext(ctx)
+	if torrent.Spec.ManagedBy == "k8s" {
+		logger.Info("Delete torrent", "name", torrent.Name, "hash", torrent.Spec.Hash)
+		return r.Delete(ctx, &torrent)
+	}
+
+	logger.Info("Torrent is managed by server, skip delete", "name", torrent.Name, "hash", torrent.Spec.Hash)
+	return nil
+}
+
+/*
 func (r *QBittorrentServerReconciler) UpsertTorrent(ctx context.Context, req ctrl.Request, qbTorrent *model.Torrent) error {
 	logger := log.FromContext(ctx)
 	torrent := torrentv1alpha1.Torrent{}
@@ -131,7 +255,7 @@ func (r *QBittorrentServerReconciler) UpsertTorrent(ctx context.Context, req ctr
 	// TODO: Update spec if the torrent is managed by Server
 	// Update torrent spec
 	torrent.Spec.Hash = qbTorrent.Hash
-	torrent.Spec.Name = qbTorrent.Name // Should be in state ? we may rename the torrent
+	torrent.Spec.Name = qbTorrent.Name // Should be set only if torrent is added from server
 
 	// TODO ? Handle source (btServer or k8s def)
 	// torrent.Spec.ManagedBy
@@ -154,10 +278,10 @@ func (r *QBittorrentServerReconciler) UpsertTorrent(ctx context.Context, req ctr
 		}
 	}
 
-	// Todo: Get all the torrent with the same serverRef and check if they are still in the list
-
 	return nil
 }
+
+*/
 
 // SetupWithManager sets up the controller with the Manager.
 func (r *QBittorrentServerReconciler) SetupWithManager(mgr ctrl.Manager) error {
