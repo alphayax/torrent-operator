@@ -106,12 +106,7 @@ spec:
                     type: string
                   uploaded:
                     type: string
-                required:
-                - downloaded
-                - uploaded
                 type: object
-              downloaded:
-                type: string
               eta:
                 type: string
               peers:
@@ -142,17 +137,13 @@ spec:
                 type: object
               state:
                 type: string
-              uploaded:
-                type: string
             required:
             - addedOn
             - data
-            - downloaded
             - eta
             - peers
             - size
             - speed
-            - uploaded
             type: object
         type: object
     served: true

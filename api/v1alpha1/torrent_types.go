@@ -30,6 +30,7 @@ type TorrentSpec struct {
 	ServerRef ServerRef `json:"serverRef"`
 
 	// Hash represent the torrent Hash. It is used to identify the torrent and set by the Bittorrent Server.
+	// TODO: Should be in status ??
 	Hash string `json:"hash,omitempty"`
 
 	// Name of the torrent
@@ -87,9 +88,10 @@ type TorrentStatus struct {
 }
 
 type TorrentStatusData struct {
-	Downloaded string `json:"downloaded"`
-	Uploaded   string `json:"uploaded"`
+	Downloaded string `json:"downloaded,omitempty"`
+	Uploaded   string `json:"uploaded,omitempty"`
 }
+
 type TorrentStatusPeers struct {
 	Seeders  string `json:"seeders"`
 	Leechers string `json:"leechers"`
