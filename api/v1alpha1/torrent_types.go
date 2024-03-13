@@ -26,8 +26,11 @@ import (
 
 // TorrentSpec defines the DESIRED state of Torrent
 type TorrentSpec struct {
-	ServerRef ServerRef `json:"serverRef,omitempty"`
-	Hash      string    `json:"hash,omitempty"`
+	//+kubebuilder:validation:Required
+	ServerRef ServerRef `json:"serverRef"`
+
+	// Hash represent the torrent Hash. It is used to identify the torrent and set by the Bittorrent Server.
+	Hash string `json:"hash,omitempty"`
 
 	// Name of the torrent
 	//+kubebuilder:validation:Optional
@@ -51,7 +54,9 @@ type TorrentSpec struct {
 	// ManagedBy define if the torrent is managed by kubernetes or not
 	ManagedBy string `json:"managedBy,omitempty"`
 
-	//DownloadDir string    `json:"downloadDir,omitempty"`
+	// DownloadDir define the folder where the files will be downloaded
+	//+kubebuilder:validation:Optional
+	DownloadDir string `json:"downloadDir,omitempty"`
 }
 
 type ServerRef struct {

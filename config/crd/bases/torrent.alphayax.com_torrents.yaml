@@ -55,7 +55,13 @@ spec:
           spec:
             description: TorrentSpec defines the DESIRED state of Torrent
             properties:
+              downloadDir:
+                description: DownloadDir define the folder where the files will be
+                  downloaded
+                type: string
               hash:
+                description: Hash represent the torrent Hash. It is used to identify
+                  the torrent and set by the Bittorrent Server.
                 type: string
               keepFiles:
                 default: true

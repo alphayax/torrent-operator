@@ -74,9 +74,11 @@ func (r *TorrentReconciler) Reconcile(ctx context.Context, req ctrl.Request) (ct
 	if torrent.Spec.Hash == "" && torrent.Spec.URL != "" {
 		logger.Info("--- Add Torrent (via URL)", "URL", torrent.Spec.URL)
 		URLs := []string{torrent.Spec.URL}
-		torrentTag := fmt.Sprintf("k8s-%s", req.Name)
 		torrentOptions := &model.AddTorrentsOptions{
-			Tags: torrentTag,
+			Tags:     fmt.Sprintf("k8s-%s", req.Name),
+			Savepath: torrent.Spec.DownloadDir,
+			Rename:   torrent.Spec.Name,
+			Paused:   strconv.FormatBool(torrent.Spec.Paused),
 		}
 		if err := qb.Torrent.AddURLs(URLs, torrentOptions); err != nil {
 			logger.Error(err, "!!! Error while adding torrent")
@@ -121,6 +123,14 @@ func (r *TorrentReconciler) Reconcile(ctx context.Context, req ctrl.Request) (ct
 		if err := qb.Torrent.SetName(torrent.Spec.Hash, torrent.Spec.Name); err != nil {
 			return ctrl.Result{}, err
 		}
+	}
+
+	// Update Folder
+	if torrentInit.SavePath != torrent.Spec.DownloadDir {
+		if err := qb.Torrent.SetLocations([]string{torrent.Spec.Hash}, torrent.Spec.DownloadDir); err != nil {
+			return ctrl.Result{}, err
+		}
+		logger.Info("--- Torrent MOVED", "Hash", torrent.Spec.Hash, "NewFolder", torrent.Spec.DownloadDir)
 	}
 
 	// Update State
