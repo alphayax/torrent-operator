@@ -92,9 +92,8 @@ func (r *QBittorrentServerReconciler) Reconcile(ctx context.Context, req ctrl.Re
 	}
 
 	for hash, torrent := range serverTorrents {
+		// Torrent exist on server but is not referenced in kube
 		if _, ok := kubeTorrents[hash]; !ok {
-			// If server torrent is not in kube, add it
-			logger.Info("* Upsert torrent", "hash", hash)
 			if err := r.CreateTorrent(ctx, req, torrent); err != nil {
 				logger.Error(err, "Error while torrent creation")
 			}
@@ -106,6 +105,7 @@ func (r *QBittorrentServerReconciler) Reconcile(ctx context.Context, req ctrl.Re
 			// Pending torrent creation
 			continue
 		}
+		// Torrent is in kube (and initialized), but not on server
 		if _, ok := serverTorrents[hash]; !ok {
 			if err := r.DeleteTorrent(ctx, kubeTorrent); err != nil {
 				logger.Error(err, "Error while torrent delete")
@@ -155,6 +155,9 @@ func (r *QBittorrentServerReconciler) getKubeTorrents(ctx context.Context, req c
 }
 
 func (r *QBittorrentServerReconciler) CreateTorrent(ctx context.Context, req ctrl.Request, qbTorrent *model.Torrent) error {
+	logger := log.FromContext(ctx)
+	logger.Info("* Upsert torrent", "hash", qbTorrent.Hash)
+
 	// Try to find if torrent is already in kube but not have a hash already
 	// If yes, update it
 	torrentName := qbTorrent.Hash
@@ -184,7 +187,7 @@ func (r *QBittorrentServerReconciler) CreateTorrent(ctx context.Context, req ctr
 	torrent.Name = torrentName
 	torrent.Namespace = req.Namespace
 
-	// Add Torrent Specs
+	// Update Torrent Specs
 	torrent.Spec.Hash = qbTorrent.Hash
 	torrent.Spec.Name = qbTorrent.Name
 	torrent.Spec.DownloadDir = qbTorrent.SavePath
@@ -192,96 +195,37 @@ func (r *QBittorrentServerReconciler) CreateTorrent(ctx context.Context, req ctr
 		Namespace: req.Namespace,
 		Name:      req.Name,
 	}
-	torrent.Spec.ManagedBy = "btServer"
+
+	// Set Spec default values according origin
 	if torrentFound {
 		torrent.Spec.ManagedBy = "k8s"
+	} else {
+		torrent.Spec.ManagedBy = "btServer"
+		torrent.Spec.KeepFiles = true
 	}
 
-	// Create the torrent
+	// Create/Update the torrent
 	if !torrentFound {
-		if err := r.Create(ctx, &torrent); err != nil {
-			return err
-		}
-		return nil
+		return r.Create(ctx, &torrent)
 	}
-
-	// Update the torrent
-	if err := r.Update(ctx, &torrent); err != nil {
-		return err
-	}
-	return nil
+	return r.Update(ctx, &torrent)
 }
 
 func (r *QBittorrentServerReconciler) DeleteTorrent(ctx context.Context, torrent torrentv1alpha1.Torrent) error {
 	logger := log.FromContext(ctx)
-	if torrent.Spec.ManagedBy == "k8s" {
+
+	// If torrent is managed by server, delete it from kube
+	if torrent.Spec.ManagedBy != "k8s" {
 		logger.Info("Delete torrent", "name", torrent.Name, "hash", torrent.Spec.Hash)
 		return r.Delete(ctx, &torrent)
 	}
 
-	logger.Info("Torrent is managed by server, skip delete", "name", torrent.Name, "hash", torrent.Spec.Hash)
+	// Torrent should be here. Maybe stuck by finalizer ?
+	// TODO: Wait the case appears and decide what to do...
+	logger.Info("!!!! Torrent is managed by k8s, but is not on server", "name", torrent.Name, "hash", torrent.Spec.Hash)
+	logger.Info("!!!! Should we recreate it ?")
 	return nil
 }
-
-/*
-func (r *QBittorrentServerReconciler) UpsertTorrent(ctx context.Context, req ctrl.Request, qbTorrent *model.Torrent) error {
-	logger := log.FromContext(ctx)
-	torrent := torrentv1alpha1.Torrent{}
-
-	torrentName := qbTorrent.Hash
-	if qbTorrent.Tags != "" {
-		TagList := strings.Split(qbTorrent.Tags, ",")
-		for _, tag := range TagList {
-			if strings.HasPrefix(tag, "k8s-") {
-				torrentName = strings.TrimPrefix(tag, "k8s-")
-			}
-		}
-	}
-
-	namespacedName := client.ObjectKey{
-		Namespace: req.Namespace,
-		Name:      torrentName,
-	}
-
-	err := r.Get(ctx, namespacedName, &torrent)
-	if err != nil && !errors.IsNotFound(err) {
-		return err
-	}
-
-	torrent.Name = torrentName
-	torrent.Namespace = req.Namespace
-
-	// TODO: WARN ! We should update STATE not SPEC (except for creation)
-	// TODO: Update spec if the torrent is managed by Server
-	// Update torrent spec
-	torrent.Spec.Hash = qbTorrent.Hash
-	torrent.Spec.Name = qbTorrent.Name // Should be set only if torrent is added from server
-
-	// TODO ? Handle source (btServer or k8s def)
-	// torrent.Spec.ManagedBy
-
-	torrent.Spec.ServerRef = torrentv1alpha1.ServerRef{
-		Namespace: req.Namespace,
-		Name:      req.Name,
-	}
-
-	if errors.IsNotFound(err) {
-		// Create the torrent
-		logger.Info("* Create torrent")
-		if err := r.Create(ctx, &torrent); err != nil {
-			return err
-		}
-	} else {
-		// Update the torrent
-		if err := r.Update(ctx, &torrent); err != nil {
-			return err
-		}
-	}
-
-	return nil
-}
-
-*/
 
 // SetupWithManager sets up the controller with the Manager.
 func (r *QBittorrentServerReconciler) SetupWithManager(mgr ctrl.Manager) error {
