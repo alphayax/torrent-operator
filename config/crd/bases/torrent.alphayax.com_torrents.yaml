@@ -60,8 +60,9 @@ spec:
                   downloaded
                 type: string
               hash:
-                description: Hash represent the torrent Hash. It is used to identify
-                  the torrent and set by the Bittorrent Server.
+                description: |-
+                  Hash represent the torrent Hash. It is used to identify the torrent and set by the Bittorrent Server.
+                  TODO: Should be in status ??
                 type: string
               keepFiles:
                 default: true

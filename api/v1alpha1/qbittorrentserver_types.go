@@ -27,9 +27,9 @@ import (
 type QBittorrentServerSpec struct {
 	// INSERT ADDITIONAL SPEC FIELDS - desired state of cluster
 	// Important: Run "make" to regenerate code after modifying this file
-	Server   string `json:"server,omitempty"`
-	Username string `json:"username,omitempty"`
-	Password string `json:"password,omitempty"` // Todo: use a secret
+	ServerUri string `json:"serverUri"`
+	Username  string `json:"username,omitempty"`
+	Password  string `json:"password,omitempty"` // Todo: use a secret
 }
 
 // QBittorrentServerStatus defines the observed state of QBittorrentServer
