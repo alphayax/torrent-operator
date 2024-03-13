@@ -28,9 +28,13 @@ import (
 	"k8s.io/apimachinery/pkg/runtime"
 	ctrl "sigs.k8s.io/controller-runtime"
 	"sigs.k8s.io/controller-runtime/pkg/client"
+	"sigs.k8s.io/controller-runtime/pkg/controller/controllerutil"
 	"sigs.k8s.io/controller-runtime/pkg/log"
+	"strconv"
 	"time"
 )
+
+const TORRENT_FINALIZER = "torrent.bt.alphayax.com/finalizer"
 
 // TorrentReconciler reconciles a Torrent object
 type TorrentReconciler struct {
@@ -48,7 +52,7 @@ type TorrentReconciler struct {
 // - https://pkg.go.dev/sigs.k8s.io/controller-runtime@v0.17.0/pkg/reconcile
 func (r *TorrentReconciler) Reconcile(ctx context.Context, req ctrl.Request) (ctrl.Result, error) {
 	logger := log.FromContext(ctx)
-	logger.Info("*** RECONCILE torrent ***")
+	//logger.Info("*** RECONCILE torrent ***")
 
 	// Retrieve torrent object
 	torrent := torrentv1alpha1.Torrent{}
@@ -59,8 +63,26 @@ func (r *TorrentReconciler) Reconcile(ctx context.Context, req ctrl.Request) (ct
 		return ctrl.Result{}, err
 	}
 
-	// TODO Define a default server if not defined
-	// torrent.Spec.ServerRef
+	// Handle Finalizer
+	if torrent.ObjectMeta.DeletionTimestamp.IsZero() {
+		if !controllerutil.ContainsFinalizer(&torrent, TORRENT_FINALIZER) {
+			controllerutil.AddFinalizer(&torrent, TORRENT_FINALIZER)
+			if err := r.Update(ctx, &torrent); err != nil {
+				return ctrl.Result{}, err
+			}
+		}
+	} else {
+		if controllerutil.ContainsFinalizer(&torrent, TORRENT_FINALIZER) {
+			if err := r.deleteTorrent(ctx, &torrent); err != nil {
+				return ctrl.Result{}, err
+			}
+			controllerutil.RemoveFinalizer(&torrent, TORRENT_FINALIZER)
+			if err := r.Update(ctx, &torrent); err != nil {
+				return ctrl.Result{}, err
+			}
+		}
+		return ctrl.Result{}, nil
+	}
 
 	// Connect to server
 	qb, err := r.connectToServer(ctx, torrent.Spec.ServerRef)
@@ -181,6 +203,25 @@ func HumanReadableSize(sizeInit int64) string {
 
 	// Round the value to one decimal place and format output
 	return fmt.Sprintf("%.3f %s", size, units[index])
+}
+
+func (r *TorrentReconciler) deleteTorrent(ctx context.Context, torrent *torrentv1alpha1.Torrent) error {
+	logger := log.FromContext(ctx)
+	logger.Info("Delete torrent", "Name", torrent.Name)
+
+	if torrent.Spec.ManagedBy == "k8s" {
+
+		// Connect to server
+		qb, err := r.connectToServer(ctx, torrent.Spec.ServerRef)
+		if err != nil {
+			return err
+		}
+
+		logger.Info("Delete torrent", "Name", torrent.Name, "KeepFiles", torrent.Spec.KeepFiles)
+		return qb.Torrent.DeleteTorrents([]string{torrent.Spec.Hash}, !torrent.Spec.KeepFiles)
+	}
+
+	return nil
 }
 
 var qbtServers = map[string]*qbt.Client{}
