@@ -45,7 +45,8 @@ type ItemFromSecret struct {
 
 // QBittorrentServerStatus defines the OBSERVED state of QBittorrentServer
 type QBittorrentServerStatus struct {
-	State string `json:"state,omitempty"`
+	State         string `json:"state,omitempty"`
+	ServerVersion string `json:"serverVersion,omitempty"`
 }
 
 //+kubebuilder:object:root=true
