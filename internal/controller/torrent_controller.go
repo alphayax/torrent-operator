@@ -207,6 +207,18 @@ func (r *TorrentReconciler) connectToServer(ctx context.Context, ref torrentv1al
 
 // SetupWithManager sets up the controller with the Manager.
 func (r *TorrentReconciler) SetupWithManager(mgr ctrl.Manager) error {
+	// Index Torrents by ServerRef
+	if err := mgr.GetCache().IndexField(
+		context.Background(),
+		&torrentv1alpha1.Torrent{},
+		"spec.serverRef.name",
+		func(obj client.Object) []string {
+			return []string{obj.(*torrentv1alpha1.Torrent).Spec.ServerRef.Name}
+		},
+	); err != nil {
+		return err
+	}
+
 	return ctrl.NewControllerManagedBy(mgr).
 		For(&torrentv1alpha1.Torrent{}).
 		Complete(r)
