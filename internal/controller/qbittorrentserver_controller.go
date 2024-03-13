@@ -20,7 +20,6 @@ import (
 	"context"
 	qbt "github.com/KnutZuidema/go-qbittorrent"
 	"github.com/KnutZuidema/go-qbittorrent/pkg/model"
-	"github.com/sirupsen/logrus"
 	"k8s.io/apimachinery/pkg/api/errors"
 	"k8s.io/apimachinery/pkg/fields"
 	"strings"
@@ -67,30 +66,43 @@ func (r *QBittorrentServerReconciler) Reconcile(ctx context.Context, req ctrl.Re
 		return ctrl.Result{}, err
 	}
 
-	// Server has been created
-	qBittorrentUrl := qBittorrent.Spec.ServerUri
-	qb := qbt.NewClient(qBittorrentUrl, logrus.New())
-	err := qb.Login(
-		qBittorrent.Spec.Credentials.Username,
-		qBittorrent.Spec.Credentials.Password,
-	)
+	// Update state
+	qBittorrent.Status.State = "Not connected"
+	if err := r.Status().Update(ctx, &qBittorrent); err != nil {
+		return ctrl.Result{}, err
+	}
+
+	// Connect to server
+	qb, err := connectToServer(ctx, qBittorrent)
+	if err != nil {
+		return ctrl.Result{}, err
+	}
+
+	version, err := qb.Application.GetAPIVersion()
 	if err != nil {
 		return ctrl.Result{}, err
 	}
 
 	// Update state
 	qBittorrent.Status.State = "Connected"
+	qBittorrent.Status.ServerVersion = version
 	if err := r.Status().Update(ctx, &qBittorrent); err != nil {
 		return ctrl.Result{}, err
 	}
 
 	kubeTorrents, err := r.getKubeTorrents(ctx, req)
 	if err != nil {
+		logger.Error(err, "getKubeTorrents")
 		return ctrl.Result{}, err
 	}
 
 	serverTorrents, err := r.getServerTorrents(ctx, qb)
 	if err != nil {
+		logger.Error(err, "getServerTorrents")
+		qBittorrent.Status.State = err.Error()
+		if err := r.Status().Update(ctx, &qBittorrent); err != nil {
+			return ctrl.Result{}, err
+		}
 		return ctrl.Result{}, err
 	}
 
