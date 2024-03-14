@@ -55,6 +55,7 @@ type QBittorrentServerStatus struct {
 // QBittorrentServer is the Schema for the qbittorrentservers API
 // +kubebuilder:printcolumn:name="Status",type=string,JSONPath=`.status.state`
 // +kubebuilder:printcolumn:name="Uri",type=string,JSONPath=`.spec.serverUri`
+// +kubebuilder:printcolumn:name="Version",type=string,JSONPath=`.status.serverVersion`
 type QBittorrentServer struct {
 	metav1.TypeMeta   `json:",inline"`
 	metav1.ObjectMeta `json:"metadata,omitempty"`

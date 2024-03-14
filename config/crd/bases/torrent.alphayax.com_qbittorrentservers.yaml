@@ -21,6 +21,9 @@ spec:
     - jsonPath: .spec.serverUri
       name: Uri
       type: string
+    - jsonPath: .status.serverVersion
+      name: Version
+      type: string
     name: v1alpha1
     schema:
       openAPIV3Schema:
