@@ -203,9 +203,6 @@ func (r *TorrentReconciler) deleteTorrent(ctx context.Context, torrent *torrentv
 func (r *TorrentReconciler) connectToServer(ctx context.Context, ref torrentv1alpha1.ServerRef) (*qbt.Client, error) {
 	qBittorrent := &torrentv1alpha1.QBittorrentServer{}
 	if err := r.Get(ctx, ref.GetNamespacedName(), qBittorrent); err != nil {
-		if errors.IsNotFound(err) {
-			return nil, err
-		}
 		return nil, err
 	}
 
