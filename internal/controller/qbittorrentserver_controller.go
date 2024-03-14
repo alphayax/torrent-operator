@@ -22,6 +22,7 @@ import (
 	"github.com/KnutZuidema/go-qbittorrent/pkg/model"
 	"k8s.io/apimachinery/pkg/api/errors"
 	"k8s.io/apimachinery/pkg/fields"
+	"sigs.k8s.io/controller-runtime/pkg/controller/controllerutil"
 	"strings"
 	"time"
 
@@ -32,6 +33,8 @@ import (
 
 	torrentv1alpha1 "github.com/alphayax/torrent-operator/api/v1alpha1"
 )
+
+const BTSERVER_FINALIZER = "bt-server.bt.alphayax.com/finalizer"
 
 // QBittorrentServerReconciler reconciles a QBittorrentServer object
 type QBittorrentServerReconciler struct {
@@ -66,14 +69,29 @@ func (r *QBittorrentServerReconciler) Reconcile(ctx context.Context, req ctrl.Re
 		return ctrl.Result{}, err
 	}
 
-	// Update state
-	qBittorrent.Status.State = "Not connected"
-	if err := r.Status().Update(ctx, &qBittorrent); err != nil {
-		return ctrl.Result{}, err
+	// Handle Finalizer
+	if qBittorrent.ObjectMeta.DeletionTimestamp.IsZero() {
+		if !controllerutil.ContainsFinalizer(&qBittorrent, BTSERVER_FINALIZER) {
+			controllerutil.AddFinalizer(&qBittorrent, BTSERVER_FINALIZER)
+			if err := r.Update(ctx, &qBittorrent); err != nil {
+				return ctrl.Result{}, err
+			}
+		}
+	} else {
+		if controllerutil.ContainsFinalizer(&qBittorrent, BTSERVER_FINALIZER) {
+			if err := r.deleteServer(ctx, &qBittorrent); err != nil {
+				return ctrl.Result{}, err
+			}
+			controllerutil.RemoveFinalizer(&qBittorrent, BTSERVER_FINALIZER)
+			if err := r.Update(ctx, &qBittorrent); err != nil {
+				return ctrl.Result{}, err
+			}
+		}
+		return ctrl.Result{}, nil
 	}
 
-	// Connect to server
-	qb, err := connectToServer(ctx, qBittorrent)
+	// Register server if needed
+	qb, err := getServer(ctx, &qBittorrent)
 	if err != nil {
 		return ctrl.Result{}, err
 	}
@@ -90,19 +108,13 @@ func (r *QBittorrentServerReconciler) Reconcile(ctx context.Context, req ctrl.Re
 		return ctrl.Result{}, err
 	}
 
-	kubeTorrents, err := r.getKubeTorrents(ctx, req)
+	kubeTorrents, err := r.getKubeTorrents(ctx, &qBittorrent)
 	if err != nil {
-		logger.Error(err, "getKubeTorrents")
 		return ctrl.Result{}, err
 	}
 
 	serverTorrents, err := r.getServerTorrents(ctx, qb)
 	if err != nil {
-		logger.Error(err, "getServerTorrents")
-		qBittorrent.Status.State = err.Error()
-		if err := r.Status().Update(ctx, &qBittorrent); err != nil {
-			return ctrl.Result{}, err
-		}
 		return ctrl.Result{}, err
 	}
 
@@ -147,11 +159,11 @@ func (r *QBittorrentServerReconciler) getServerTorrents(ctx context.Context, qb 
 	return serverTorrents, nil
 }
 
-func (r *QBittorrentServerReconciler) getKubeTorrents(ctx context.Context, req ctrl.Request) (map[string]torrentv1alpha1.Torrent, error) {
+func (r *QBittorrentServerReconciler) getKubeTorrents(ctx context.Context, btServer *torrentv1alpha1.QBittorrentServer) (map[string]torrentv1alpha1.Torrent, error) {
 	torrentList := torrentv1alpha1.TorrentList{}
 	if err := r.List(ctx, &torrentList, &client.ListOptions{
-		Namespace:     req.Namespace,
-		FieldSelector: fields.OneTermEqualSelector("spec.serverRef.name", req.Name),
+		Namespace:     btServer.Namespace,
+		FieldSelector: fields.OneTermEqualSelector("spec.serverRef.name", btServer.Name),
 	}); err != nil {
 		if errors.IsNotFound(err) {
 			// No torrent found
@@ -239,6 +251,25 @@ func (r *QBittorrentServerReconciler) DeleteTorrent(ctx context.Context, torrent
 	// TODO: Wait the case appears and decide what to do...
 	logger.Info("!!!! Torrent is managed by k8s, but is not on server", "name", torrent.Name, "hash", torrent.Spec.Hash)
 	logger.Info("!!!! Should we recreate it ?")
+	return nil
+}
+
+func (r *QBittorrentServerReconciler) deleteServer(ctx context.Context, qBittorrent *torrentv1alpha1.QBittorrentServer) error {
+	logger := log.FromContext(ctx)
+
+	// Get all torrent objects linked to this server
+	kubeTorrents, err := r.getKubeTorrents(ctx, qBittorrent)
+	if err != nil {
+		return err
+	}
+
+	for _, torrent := range kubeTorrents {
+		logger.Info("Remove orphan torrent", "name", torrent.Name, "hash", torrent.Spec.Hash)
+		if err := r.Delete(ctx, &torrent); err != nil {
+			logger.Error(err, "Unable to remove orphan torrent")
+		}
+	}
+
 	return nil
 }
 

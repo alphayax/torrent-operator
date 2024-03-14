@@ -206,7 +206,7 @@ func (r *TorrentReconciler) connectToServer(ctx context.Context, ref torrentv1al
 		return nil, err
 	}
 
-	return connectToServer(ctx, *qBittorrent)
+	return getServer(ctx, qBittorrent)
 }
 
 // SetupWithManager sets up the controller with the Manager.
