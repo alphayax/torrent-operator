@@ -185,19 +185,19 @@ func (r *TorrentReconciler) deleteTorrent(ctx context.Context, torrent *torrentv
 	logger := log.FromContext(ctx)
 	logger.Info("Delete torrent", "Name", torrent.Name)
 
-	if torrent.Spec.ManagedBy == "k8s" {
-
-		// Connect to server
-		qb, err := r.connectToServer(ctx, torrent.Spec.ServerRef)
-		if err != nil {
-			return err
-		}
-
-		logger.Info("Delete torrent", "Name", torrent.Name, "KeepFiles", torrent.Spec.KeepFiles)
-		return qb.Torrent.DeleteTorrents([]string{torrent.Spec.Hash}, !torrent.Spec.KeepFiles)
+	// If torrent is not managed by this controller, we don't have anything to do
+	if torrent.Spec.ManagedBy != "k8s" {
+		return nil
 	}
 
-	return nil
+	// Connect to server
+	qb, err := r.connectToServer(ctx, torrent.Spec.ServerRef)
+	if err != nil {
+		return err
+	}
+
+	logger.Info("Delete torrent", "Name", torrent.Name, "KeepFiles", torrent.Spec.KeepFiles)
+	return qb.Torrent.DeleteTorrents([]string{torrent.Spec.Hash}, !torrent.Spec.KeepFiles)
 }
 
 func (r *TorrentReconciler) connectToServer(ctx context.Context, ref torrentv1alpha1.ServerRef) (*qbt.Client, error) {
