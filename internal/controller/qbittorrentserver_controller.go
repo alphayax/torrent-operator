@@ -93,6 +93,11 @@ func (r *QBittorrentServerReconciler) Reconcile(ctx context.Context, req ctrl.Re
 	// Register server if needed
 	qb, err := getServer(ctx, &qBittorrent)
 	if err != nil {
+		qBittorrent.Status.State = "Not connected"
+		qBittorrent.Status.ServerVersion = "Unknown"
+		if err := r.Status().Update(ctx, &qBittorrent); err != nil {
+			return ctrl.Result{}, err
+		}
 		return ctrl.Result{}, err
 	}
 

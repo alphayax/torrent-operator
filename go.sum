@@ -1,5 +1,5 @@
-github.com/alphayax/go-qbittorrent v0.0.0-20240309104156-fea3c797ae2f h1:1cYGKiPFPO2jAN5eJR1rEdx0wRD9mwji0P5/psD8oyM=
-github.com/alphayax/go-qbittorrent v0.0.0-20240309104156-fea3c797ae2f/go.mod h1:1Cf/UZ8xAfNXunIWGcyJxdSKUkEpCBF8TwU+XO5h4bo=
+github.com/alphayax/go-qbittorrent v0.0.0-20240315141450-aaeb58e298d0 h1:NbdaKIjlI9Bd1bJf9I7m1cJOAhxdXmL6SbHe575sccI=
+github.com/alphayax/go-qbittorrent v0.0.0-20240315141450-aaeb58e298d0/go.mod h1:1Cf/UZ8xAfNXunIWGcyJxdSKUkEpCBF8TwU+XO5h4bo=
 github.com/beorn7/perks v1.0.1 h1:VlbKKnNfV8bJzeqoa4cOKqO6bYr3WgKZxO8Z16+hsOM=
 github.com/beorn7/perks v1.0.1/go.mod h1:G2ZrVWU2WbWT9wwq4/hrbKbnv/1ERSJQ0ibhJ6rlkpw=
 github.com/cespare/xxhash/v2 v2.2.0 h1:DC2CZ1Ep5Y4k3ZQ899DldepgrayRUGE6BBZ/cd9Cj44=

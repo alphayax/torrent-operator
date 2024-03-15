@@ -33,8 +33,8 @@ type QBittorrentServerSpec struct {
 type QBittorrentServerSpecCredentials struct {
 	Username           string         `json:"username,omitempty"`
 	Password           string         `json:"password,omitempty"`
-	PasswordFromSecret ItemFromSecret `json:"passwordFromSecret,omitempty"` // TODO: Implement (not yet used)
-	UsernameFromSecret ItemFromSecret `json:"UsernameFromSecret,omitempty"` // TODO: Implement (not yet used)
+	PasswordFromSecret ItemFromSecret `json:"passwordFromSecret,omitempty"`
+	UsernameFromSecret ItemFromSecret `json:"usernameFromSecret,omitempty"`
 }
 
 type ItemFromSecret struct {

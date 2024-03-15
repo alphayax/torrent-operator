@@ -51,19 +51,6 @@ spec:
             properties:
               credentials:
                 properties:
-                  UsernameFromSecret:
-                    properties:
-                      key:
-                        type: string
-                      name:
-                        type: string
-                      namespace:
-                        type: string
-                    required:
-                    - key
-                    - name
-                    - namespace
-                    type: object
                   password:
                     type: string
                   passwordFromSecret:
@@ -81,6 +68,19 @@ spec:
                     type: object
                   username:
                     type: string
+                  usernameFromSecret:
+                    properties:
+                      key:
+                        type: string
+                      name:
+                        type: string
+                      namespace:
+                        type: string
+                    required:
+                    - key
+                    - name
+                    - namespace
+                    type: object
                 type: object
               serverUri:
                 type: string
