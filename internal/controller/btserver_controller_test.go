@@ -30,7 +30,7 @@ import (
 	torrentv1alpha1 "github.com/alphayax/torrent-operator/api/v1alpha1"
 )
 
-var _ = Describe("QBittorrentServer Controller", func() {
+var _ = Describe("BtServer Controller", func() {
 	Context("When reconciling a resource", func() {
 		const resourceName = "test-resource"
 
@@ -40,13 +40,13 @@ var _ = Describe("QBittorrentServer Controller", func() {
 			Name:      resourceName,
 			Namespace: "default", // TODO(user):Modify as needed
 		}
-		qbittorrentserver := &torrentv1alpha1.QBittorrentServer{}
+		btserver := &torrentv1alpha1.BtServer{}
 
 		BeforeEach(func() {
-			By("creating the custom resource for the Kind QBittorrentServer")
-			err := k8sClient.Get(ctx, typeNamespacedName, qbittorrentserver)
+			By("creating the custom resource for the Kind BtServer")
+			err := k8sClient.Get(ctx, typeNamespacedName, btserver)
 			if err != nil && errors.IsNotFound(err) {
-				resource := &torrentv1alpha1.QBittorrentServer{
+				resource := &torrentv1alpha1.BtServer{
 					ObjectMeta: metav1.ObjectMeta{
 						Name:      resourceName,
 						Namespace: "default",
@@ -59,16 +59,16 @@ var _ = Describe("QBittorrentServer Controller", func() {
 
 		AfterEach(func() {
 			// TODO(user): Cleanup logic after each test, like removing the resource instance.
-			resource := &torrentv1alpha1.QBittorrentServer{}
+			resource := &torrentv1alpha1.BtServer{}
 			err := k8sClient.Get(ctx, typeNamespacedName, resource)
 			Expect(err).NotTo(HaveOccurred())
 
-			By("Cleanup the specific resource instance QBittorrentServer")
+			By("Cleanup the specific resource instance BtServer")
 			Expect(k8sClient.Delete(ctx, resource)).To(Succeed())
 		})
 		It("should successfully reconcile the resource", func() {
 			By("Reconciling the created resource")
-			controllerReconciler := &QBittorrentServerReconciler{
+			controllerReconciler := &BtServerReconciler{
 				Client: k8sClient,
 				Scheme: k8sClient.Scheme(),
 			}

@@ -18,8 +18,7 @@ package controller
 
 import (
 	"context"
-	qbt "github.com/KnutZuidema/go-qbittorrent"
-	"github.com/KnutZuidema/go-qbittorrent/pkg/model"
+	"github.com/alphayax/torrent-operator/internal/helper"
 	"k8s.io/apimachinery/pkg/api/errors"
 	"k8s.io/apimachinery/pkg/fields"
 	"sigs.k8s.io/controller-runtime/pkg/controller/controllerutil"
@@ -36,30 +35,30 @@ import (
 
 const BTSERVER_FINALIZER = "bt-server.bt.alphayax.com/finalizer"
 
-// QBittorrentServerReconciler reconciles a QBittorrentServer object
-type QBittorrentServerReconciler struct {
+// BtServerReconciler reconciles a BtServer object
+type BtServerReconciler struct {
 	client.Client
 	Scheme *runtime.Scheme
 }
 
-//+kubebuilder:rbac:groups=torrent.alphayax.com,resources=qbittorrentservers,verbs=get;list;watch;create;update;patch;delete
-//+kubebuilder:rbac:groups=torrent.alphayax.com,resources=qbittorrentservers/status,verbs=get;update;patch
-//+kubebuilder:rbac:groups=torrent.alphayax.com,resources=qbittorrentservers/finalizers,verbs=update
+//+kubebuilder:rbac:groups=torrent.alphayax.com,resources=btservers,verbs=get;list;watch;create;update;patch;delete
+//+kubebuilder:rbac:groups=torrent.alphayax.com,resources=btservers/status,verbs=get;update;patch
+//+kubebuilder:rbac:groups=torrent.alphayax.com,resources=btservers/finalizers,verbs=update
 
 // Reconcile is part of the main kubernetes reconciliation loop which aims to
 // move the current state of the cluster closer to the desired state.
 // TODO(user): Modify the Reconcile function to compare the state specified by
-// the QBittorrentServer object against the actual cluster state, and then
+// the BtServer object against the actual cluster state, and then
 // perform operations to make the cluster state reflect the state specified by
 // the user.
 //
 // For more details, check Reconcile and its Result here:
 // - https://pkg.go.dev/sigs.k8s.io/controller-runtime@v0.17.0/pkg/reconcile
-func (r *QBittorrentServerReconciler) Reconcile(ctx context.Context, req ctrl.Request) (ctrl.Result, error) {
+func (r *BtServerReconciler) Reconcile(ctx context.Context, req ctrl.Request) (ctrl.Result, error) {
 	logger := log.FromContext(ctx)
 
-	qBittorrent := torrentv1alpha1.QBittorrentServer{}
-	if err := r.Get(ctx, req.NamespacedName, &qBittorrent); err != nil {
+	k8sBittorrent := &torrentv1alpha1.BtServer{}
+	if err := r.Get(ctx, req.NamespacedName, k8sBittorrent); err != nil {
 		if errors.IsNotFound(err) {
 			// Server has been deleted
 			// TODO: Remove torrent linked to this server (without interacting with torrent API)
@@ -70,20 +69,20 @@ func (r *QBittorrentServerReconciler) Reconcile(ctx context.Context, req ctrl.Re
 	}
 
 	// Handle Finalizer
-	if qBittorrent.ObjectMeta.DeletionTimestamp.IsZero() {
-		if !controllerutil.ContainsFinalizer(&qBittorrent, BTSERVER_FINALIZER) {
-			controllerutil.AddFinalizer(&qBittorrent, BTSERVER_FINALIZER)
-			if err := r.Update(ctx, &qBittorrent); err != nil {
+	if k8sBittorrent.ObjectMeta.DeletionTimestamp.IsZero() {
+		if !controllerutil.ContainsFinalizer(k8sBittorrent, BTSERVER_FINALIZER) {
+			controllerutil.AddFinalizer(k8sBittorrent, BTSERVER_FINALIZER)
+			if err := r.Update(ctx, k8sBittorrent); err != nil {
 				return ctrl.Result{}, err
 			}
 		}
 	} else {
-		if controllerutil.ContainsFinalizer(&qBittorrent, BTSERVER_FINALIZER) {
-			if err := r.deleteServer(ctx, &qBittorrent); err != nil {
+		if controllerutil.ContainsFinalizer(k8sBittorrent, BTSERVER_FINALIZER) {
+			if err := r.deleteServer(ctx, k8sBittorrent); err != nil {
 				return ctrl.Result{}, err
 			}
-			controllerutil.RemoveFinalizer(&qBittorrent, BTSERVER_FINALIZER)
-			if err := r.Update(ctx, &qBittorrent); err != nil {
+			controllerutil.RemoveFinalizer(k8sBittorrent, BTSERVER_FINALIZER)
+			if err := r.Update(ctx, k8sBittorrent); err != nil {
 				return ctrl.Result{}, err
 			}
 		}
@@ -91,34 +90,33 @@ func (r *QBittorrentServerReconciler) Reconcile(ctx context.Context, req ctrl.Re
 	}
 
 	// Register server if needed
-	qb, err := getServer(ctx, &qBittorrent)
+	btClient, err := getBtServer(ctx, k8sBittorrent)
 	if err != nil {
-		qBittorrent.Status.State = "Not connected"
-		qBittorrent.Status.ServerVersion = "Unknown"
-		if err := r.Status().Update(ctx, &qBittorrent); err != nil {
+		k8sBittorrent.Status.State = "Not connected"
+		k8sBittorrent.Status.ServerVersion = "Unknown"
+		if err := r.Status().Update(ctx, k8sBittorrent); err != nil {
 			return ctrl.Result{}, err
 		}
 		return ctrl.Result{}, err
 	}
 
-	version, err := qb.Application.GetAPIVersion()
+	version, err := btClient.GetAPIVersion()
 	if err != nil {
 		return ctrl.Result{}, err
 	}
 
 	// Update state
-	qBittorrent.Status.State = "Connected"
-	qBittorrent.Status.ServerVersion = version
-	if err := r.Status().Update(ctx, &qBittorrent); err != nil {
+	k8sBittorrent.Status.State = "Connected"
+	k8sBittorrent.Status.ServerVersion = version
+	if err := r.Status().Update(ctx, k8sBittorrent); err != nil {
 		return ctrl.Result{}, err
 	}
 
-	kubeTorrents, err := r.getKubeTorrents(ctx, &qBittorrent)
+	kubeTorrents, err := r.getKubeTorrents(ctx, k8sBittorrent)
 	if err != nil {
 		return ctrl.Result{}, err
 	}
-
-	serverTorrents, err := r.getServerTorrents(ctx, qb)
+	serverTorrents, err := r.getServerTorrents(ctx, btClient)
 	if err != nil {
 		return ctrl.Result{}, err
 	}
@@ -150,13 +148,13 @@ func (r *QBittorrentServerReconciler) Reconcile(ctx context.Context, req ctrl.Re
 	}, nil
 }
 
-func (r *QBittorrentServerReconciler) getServerTorrents(ctx context.Context, qb *qbt.Client) (map[string]*model.Torrent, error) {
-	torrentList, err := qb.Torrent.GetList(nil)
+func (r *BtServerReconciler) getServerTorrents(ctx context.Context, qb helper.BtServerInterface) (map[string]*helper.Torrent, error) {
+	torrentList, err := qb.GetTorrents()
 	if err != nil {
 		return nil, err
 	}
 
-	serverTorrents := make(map[string]*model.Torrent)
+	serverTorrents := make(map[string]*helper.Torrent)
 	for _, torrent := range torrentList {
 		serverTorrents[torrent.Hash] = torrent
 	}
@@ -164,7 +162,7 @@ func (r *QBittorrentServerReconciler) getServerTorrents(ctx context.Context, qb 
 	return serverTorrents, nil
 }
 
-func (r *QBittorrentServerReconciler) getKubeTorrents(ctx context.Context, btServer *torrentv1alpha1.QBittorrentServer) (map[string]torrentv1alpha1.Torrent, error) {
+func (r *BtServerReconciler) getKubeTorrents(ctx context.Context, btServer *torrentv1alpha1.BtServer) (map[string]torrentv1alpha1.Torrent, error) {
 	torrentList := torrentv1alpha1.TorrentList{}
 	if err := r.List(ctx, &torrentList, &client.ListOptions{
 		Namespace:     btServer.Namespace,
@@ -186,15 +184,15 @@ func (r *QBittorrentServerReconciler) getKubeTorrents(ctx context.Context, btSer
 	return kubeTorrents, nil
 }
 
-func (r *QBittorrentServerReconciler) CreateTorrent(ctx context.Context, req ctrl.Request, qbTorrent *model.Torrent) error {
+func (r *BtServerReconciler) CreateTorrent(ctx context.Context, req ctrl.Request, torrent *helper.Torrent) error {
 	logger := log.FromContext(ctx)
-	logger.Info("* Upsert torrent", "hash", qbTorrent.Hash)
+	logger.Info("* Upsert torrent", "hash", torrent.Hash)
 
 	// Try to find if torrent is already in kube but not have a hash already
 	// If yes, update it
-	torrentName := qbTorrent.Hash
-	if qbTorrent.Tags != "" {
-		TagList := strings.Split(qbTorrent.Tags, ",")
+	torrentName := torrent.Hash
+	if torrent.Tags != "" {
+		TagList := strings.Split(torrent.Tags, ",")
 		for _, tag := range TagList {
 			if strings.HasPrefix(tag, "k8s-") {
 				torrentName = strings.TrimPrefix(tag, "k8s-")
@@ -203,47 +201,47 @@ func (r *QBittorrentServerReconciler) CreateTorrent(ctx context.Context, req ctr
 	}
 
 	// If a torrentName is found, it's a reference to a k8s object. Try to get it
-	torrent := torrentv1alpha1.Torrent{}
+	k8sTorrent := &torrentv1alpha1.Torrent{}
 	namespacedName := client.ObjectKey{
 		Namespace: req.Namespace,
 		Name:      torrentName,
 	}
 
-	err := r.Get(ctx, namespacedName, &torrent)
+	err := r.Get(ctx, namespacedName, k8sTorrent)
 	if err != nil && !errors.IsNotFound(err) {
 		return err
 	}
 	torrentFound := !errors.IsNotFound(err)
 
 	// Add Torrent metadata
-	torrent.Name = torrentName
-	torrent.Namespace = req.Namespace
+	k8sTorrent.Name = torrentName
+	k8sTorrent.Namespace = req.Namespace
 
 	// Update Torrent Specs
-	torrent.Spec.Hash = qbTorrent.Hash
-	torrent.Spec.Name = qbTorrent.Name
-	torrent.Spec.DownloadDir = qbTorrent.SavePath
-	torrent.Spec.ServerRef = torrentv1alpha1.ServerRef{
+	k8sTorrent.Spec.Hash = torrent.Hash
+	k8sTorrent.Spec.Name = torrent.Name
+	k8sTorrent.Spec.DownloadDir = torrent.DownloadDir
+	k8sTorrent.Spec.ServerRef = torrentv1alpha1.ServerRef{
 		Namespace: req.Namespace,
 		Name:      req.Name,
 	}
 
 	// Set Spec default values according origin
 	if torrentFound {
-		torrent.Spec.ManagedBy = "k8s"
+		k8sTorrent.Spec.ManagedBy = "k8s"
 	} else {
-		torrent.Spec.ManagedBy = "btServer"
-		torrent.Spec.KeepFiles = true
+		k8sTorrent.Spec.ManagedBy = "btServer"
+		k8sTorrent.Spec.KeepFiles = true
 	}
 
 	// Create/Update the torrent
 	if !torrentFound {
-		return r.Create(ctx, &torrent)
+		return r.Create(ctx, k8sTorrent)
 	}
-	return r.Update(ctx, &torrent)
+	return r.Update(ctx, k8sTorrent)
 }
 
-func (r *QBittorrentServerReconciler) DeleteTorrent(ctx context.Context, torrent torrentv1alpha1.Torrent) error {
+func (r *BtServerReconciler) DeleteTorrent(ctx context.Context, torrent torrentv1alpha1.Torrent) error {
 	logger := log.FromContext(ctx)
 
 	// If torrent is managed by server, delete it from kube
@@ -259,7 +257,7 @@ func (r *QBittorrentServerReconciler) DeleteTorrent(ctx context.Context, torrent
 	return nil
 }
 
-func (r *QBittorrentServerReconciler) deleteServer(ctx context.Context, qBittorrent *torrentv1alpha1.QBittorrentServer) error {
+func (r *BtServerReconciler) deleteServer(ctx context.Context, qBittorrent *torrentv1alpha1.BtServer) error {
 	logger := log.FromContext(ctx)
 
 	// Get all torrent objects linked to this server
@@ -279,8 +277,8 @@ func (r *QBittorrentServerReconciler) deleteServer(ctx context.Context, qBittorr
 }
 
 // SetupWithManager sets up the controller with the Manager.
-func (r *QBittorrentServerReconciler) SetupWithManager(mgr ctrl.Manager) error {
+func (r *BtServerReconciler) SetupWithManager(mgr ctrl.Manager) error {
 	return ctrl.NewControllerManagedBy(mgr).
-		For(&torrentv1alpha1.QBittorrentServer{}).
+		For(&torrentv1alpha1.BtServer{}).
 		Complete(r)
 }

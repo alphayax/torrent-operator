@@ -9,4 +9,10 @@ metadata:
     app.kubernetes.io/created-by: torrent-operator
   name: torrent-sample
 spec:
-  # TODO(user): Add fields here
+  serverRef:
+    name: ""
+    namespace: ""
+  url: "magnet:?xt=urn:"
+  paused: true
+  name: "test-torrent"
+  downloadDir: "/var/data/qbittorent/"

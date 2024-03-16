@@ -24,13 +24,14 @@ import (
 // NOTE: json tags are required. Any new fields you add must have json tags for the fields to be serialized.
 // Important: Run "make" to regenerate code after modifying this file
 
-// QBittorrentServerSpec defines the DESIRED state of QBittorrentServer
-type QBittorrentServerSpec struct {
-	ServerUri   string                           `json:"serverUri"`
-	Credentials QBittorrentServerSpecCredentials `json:"credentials,omitempty"`
+// BtServerSpec defines the DESIRED state of BtServer
+type BtServerSpec struct {
+	ServerUri   string                  `json:"serverUri"`
+	Type        string                  `json:"type"`
+	Credentials BtServerSpecCredentials `json:"credentials,omitempty"`
 }
 
-type QBittorrentServerSpecCredentials struct {
+type BtServerSpecCredentials struct {
 	Username           string         `json:"username,omitempty"`
 	Password           string         `json:"password,omitempty"`
 	PasswordFromSecret ItemFromSecret `json:"passwordFromSecret,omitempty"`
@@ -43,8 +44,8 @@ type ItemFromSecret struct {
 	Key       string `json:"key"`
 }
 
-// QBittorrentServerStatus defines the OBSERVED state of QBittorrentServer
-type QBittorrentServerStatus struct {
+// BtServerStatus defines the OBSERVED state of BtServer
+type BtServerStatus struct {
 	State         string `json:"state,omitempty"`
 	ServerVersion string `json:"serverVersion,omitempty"`
 }
@@ -52,27 +53,28 @@ type QBittorrentServerStatus struct {
 //+kubebuilder:object:root=true
 //+kubebuilder:subresource:status
 
-// QBittorrentServer is the Schema for the qbittorrentservers API
+// BtServer is the Schema for the btservers API
 // +kubebuilder:printcolumn:name="Status",type=string,JSONPath=`.status.state`
+// +kubebuilder:printcolumn:name="Type",type=string,JSONPath=`.spec.type`
 // +kubebuilder:printcolumn:name="Uri",type=string,JSONPath=`.spec.serverUri`
 // +kubebuilder:printcolumn:name="Version",type=string,JSONPath=`.status.serverVersion`
-type QBittorrentServer struct {
+type BtServer struct {
 	metav1.TypeMeta   `json:",inline"`
 	metav1.ObjectMeta `json:"metadata,omitempty"`
 
-	Spec   QBittorrentServerSpec   `json:"spec,omitempty"`
-	Status QBittorrentServerStatus `json:"status,omitempty"`
+	Spec   BtServerSpec   `json:"spec,omitempty"`
+	Status BtServerStatus `json:"status,omitempty"`
 }
 
 //+kubebuilder:object:root=true
 
-// QBittorrentServerList contains a list of QBittorrentServer
-type QBittorrentServerList struct {
+// BtServerList contains a list of BtServer
+type BtServerList struct {
 	metav1.TypeMeta `json:",inline"`
 	metav1.ListMeta `json:"metadata,omitempty"`
-	Items           []QBittorrentServer `json:"items"`
+	Items           []BtServer `json:"items"`
 }
 
 func init() {
-	SchemeBuilder.Register(&QBittorrentServer{}, &QBittorrentServerList{})
+	SchemeBuilder.Register(&BtServer{}, &BtServerList{})
 }

@@ -1,27 +1,31 @@
-# permissions for end users to view qbittorrentservers.
+# permissions for end users to edit btservers.
 apiVersion: rbac.authorization.k8s.io/v1
 kind: ClusterRole
 metadata:
   labels:
     app.kubernetes.io/name: clusterrole
-    app.kubernetes.io/instance: qbittorrentserver-viewer-role
+    app.kubernetes.io/instance: btserver-editor-role
     app.kubernetes.io/component: rbac
     app.kubernetes.io/created-by: torrent-operator
     app.kubernetes.io/part-of: torrent-operator
     app.kubernetes.io/managed-by: kustomize
-  name: qbittorrentserver-viewer-role
+  name: btserver-editor-role
 rules:
 - apiGroups:
   - torrent.alphayax.com
   resources:
-  - qbittorrentservers
+  - btservers
   verbs:
+  - create
+  - delete
   - get
   - list
+  - patch
+  - update
   - watch
 - apiGroups:
   - torrent.alphayax.com
   resources:
-  - qbittorrentservers/status
+  - btservers/status
   verbs:
   - get

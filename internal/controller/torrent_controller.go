@@ -18,17 +18,14 @@ package controller
 
 import (
 	"context"
-	"fmt"
-	qbt "github.com/KnutZuidema/go-qbittorrent"
-	"github.com/KnutZuidema/go-qbittorrent/pkg/model"
 	torrentv1alpha1 "github.com/alphayax/torrent-operator/api/v1alpha1"
+	"github.com/alphayax/torrent-operator/internal/helper"
 	"k8s.io/apimachinery/pkg/api/errors"
 	"k8s.io/apimachinery/pkg/runtime"
 	ctrl "sigs.k8s.io/controller-runtime"
 	"sigs.k8s.io/controller-runtime/pkg/client"
 	"sigs.k8s.io/controller-runtime/pkg/controller/controllerutil"
 	"sigs.k8s.io/controller-runtime/pkg/log"
-	"strconv"
 	"time"
 )
 
@@ -83,7 +80,7 @@ func (r *TorrentReconciler) Reconcile(ctx context.Context, req ctrl.Request) (ct
 	}
 
 	// Connect to server
-	qb, err := r.connectToServer(ctx, torrent.Spec.ServerRef)
+	btServer, err := r.connectToServer(ctx, torrent.Spec.ServerRef)
 	if err != nil {
 		return ctrl.Result{}, err
 	}
@@ -91,15 +88,21 @@ func (r *TorrentReconciler) Reconcile(ctx context.Context, req ctrl.Request) (ct
 	// In case of new torrent (Hash is empty)
 	if torrent.Spec.Hash == "" && torrent.Spec.URL != "" {
 		logger.Info("--- Add Torrent (via URL)", "URL", torrent.Spec.URL)
-		URLs := []string{torrent.Spec.URL}
-		torrentOptions := &model.AddTorrentsOptions{
-			Tags:     fmt.Sprintf("k8s-%s", req.Name),
-			Savepath: torrent.Spec.DownloadDir,
-			Rename:   torrent.Spec.Name,
-			Paused:   strconv.FormatBool(torrent.Spec.Paused),
-		}
-		if err := qb.Torrent.AddURLs(URLs, torrentOptions); err != nil {
-			logger.Error(err, "!!! Error while adding torrent")
+		/*
+			URLs := []string{torrent.Spec.URL}
+			torrentOptions := &model.AddTorrentsOptions{
+				Tags:     fmt.Sprintf("k8s-%s", req.Name),
+				Savepath: torrent.Spec.DownloadDir,
+				Rename:   torrent.Spec.Name,
+				Paused:   strconv.FormatBool(torrent.Spec.Paused),
+			}
+			if err := btServer.Torrent.AddURLs(URLs, torrentOptions); err != nil {
+				logger.Error(err, "!!! Error while adding torrent")
+			}
+		*/
+
+		if err := btServer.AddTorrentByURL(torrent.Spec.URL, &torrent); err != nil {
+			logger.Error(err, "Unable to add torrent")
 		}
 
 		// Stop here.
@@ -110,75 +113,98 @@ func (r *TorrentReconciler) Reconcile(ctx context.Context, req ctrl.Request) (ct
 	}
 
 	// Refresh current torrent state
-	list, err := qb.Torrent.GetList(&model.GetTorrentListOptions{Hashes: torrent.Spec.Hash})
+	torrentInit, err := btServer.GetTorrent(torrent.Spec.Hash)
 	if err != nil {
 		return ctrl.Result{}, err
 	}
-	if len(list) == 0 {
-		// TODO: Better handeling: We don't requeue here, but we should handle the thing better
-		return ctrl.Result{}, nil
-	}
-	torrentInit := list[0]
+	/*
+		list, err := btServer.Torrent.GetList(&model.GetTorrentListOptions{Hashes: torrent.Spec.Hash})
+		if err != nil {
+			return ctrl.Result{}, err
+		}
+		if len(list) == 0 {
+			// TODO: Better handeling: We don't requeue here, but we should handle the thing better
+			return ctrl.Result{}, nil
+		}
+		torrentInit := list[0]
+	*/
 
 	// Pause/Resume Torrent
-	if torrent.Spec.Paused == true && (torrentInit.State != "pausedUP" && torrentInit.State != "pausedDL") {
-		if err := qb.Torrent.StopTorrents([]string{torrent.Spec.Hash}); err != nil {
+	if torrent.Spec.Paused == true && !torrentInit.IsPaused {
+		if err := btServer.StopTorrent(torrent.Spec.Hash); err != nil {
 			return ctrl.Result{}, err
 		}
 		logger.Info("--- Torrent STOPPED", "Hash", torrent.Spec.Hash)
-	} else if torrent.Spec.Paused == false && (torrentInit.State == "pausedUP" || torrentInit.State == "pausedDL") {
-		if err := qb.Torrent.ResumeTorrents([]string{torrent.Spec.Hash}); err != nil {
+	}
+	if torrent.Spec.Paused == false && torrentInit.IsPaused {
+		if err := btServer.ResumeTorrent(torrent.Spec.Hash); err != nil {
 			return ctrl.Result{}, err
 		}
 		logger.Info("--- Resume RESUMED", "Hash", torrent.Spec.Hash)
 	}
+	/*
+		if torrent.Spec.Paused == true && (torrentInit.State != "pausedUP" && torrentInit.State != "pausedDL") {
+			if err := btServer.Torrent.StopTorrents([]string{torrent.Spec.Hash}); err != nil {
+				return ctrl.Result{}, err
+			}
+			logger.Info("--- Torrent STOPPED", "Hash", torrent.Spec.Hash)
+		} else if torrent.Spec.Paused == false && (torrentInit.State == "pausedUP" || torrentInit.State == "pausedDL") {
+			if err := btServer.Torrent.ResumeTorrents([]string{torrent.Spec.Hash}); err != nil {
+				return ctrl.Result{}, err
+			}
+			logger.Info("--- Resume RESUMED", "Hash", torrent.Spec.Hash)
+		}
+	*/
 
 	// Update Name
 	if torrentInit.Name != torrent.Spec.Name {
-		if err := qb.Torrent.SetName(torrent.Spec.Hash, torrent.Spec.Name); err != nil {
+		if err := btServer.RenameTorrent(torrent.Spec.Hash, torrent.Spec.Name); err != nil {
 			return ctrl.Result{}, err
 		}
+		/*
+			if err := btServer.Torrent.SetName(torrent.Spec.Hash, torrent.Spec.Name); err != nil {
+				return ctrl.Result{}, err
+			}
+		*/
 		logger.Info("--- Torrent RENAMED", "Hash", torrent.Spec.Hash, "NewName", torrent.Spec.Name)
 	}
 
 	// Update Folder
-	if torrentInit.SavePath != torrent.Spec.DownloadDir {
-		if err := qb.Torrent.SetLocations([]string{torrent.Spec.Hash}, torrent.Spec.DownloadDir); err != nil {
+	if torrentInit.DownloadDir != torrent.Spec.DownloadDir {
+		if err := btServer.MoveTorrent(torrent.Spec.Hash, torrent.Spec.DownloadDir); err != nil {
 			return ctrl.Result{}, err
 		}
 		logger.Info("--- Torrent MOVED", "Hash", torrent.Spec.Hash, "NewFolder", torrent.Spec.DownloadDir)
 	}
+	/*
+		if torrentInit.SavePath != torrent.Spec.DownloadDir {
+			if err := btServer.Torrent.SetLocations([]string{torrent.Spec.Hash}, torrent.Spec.DownloadDir); err != nil {
+				return ctrl.Result{}, err
+			}
+			logger.Info("--- Torrent MOVED", "Hash", torrent.Spec.Hash, "NewFolder", torrent.Spec.DownloadDir)
+		}
+	*/
 
 	// Update State
-	list, err = qb.Torrent.GetList(&model.GetTorrentListOptions{Hashes: torrent.Spec.Hash})
+	torrentStatus, err := btServer.GetTorrentStatus(torrent.Spec.Hash)
 	if err != nil {
 		return ctrl.Result{}, err
 	}
-	if len(list) == 0 {
-		// TODO: Better handeling: We don't requeue here, but we should handle the thing better
-		return ctrl.Result{}, nil
-	}
+	/*
+		list, err = btServer.Torrent.GetList(&model.GetTorrentListOptions{Hashes: torrent.Spec.Hash})
+		if err != nil {
+			return ctrl.Result{}, err
+		}
+		if len(list) == 0 {
+			// TODO: Better handeling: We don't requeue here, but we should handle the thing better
+			return ctrl.Result{}, nil
+		}
+	*/
 
+	torrent.Status = torrentStatus
 	return ctrl.Result{
 		RequeueAfter: 1 * time.Minute,
-	}, r.updateTorrentState(ctx, &torrent, list[0])
-}
-
-// updateTorrentState Update the torrent according to the server
-func (r *TorrentReconciler) updateTorrentState(ctx context.Context, torrent *torrentv1alpha1.Torrent, qbTorrent *model.Torrent) error {
-	torrent.Status.AddedOn = time.Unix(int64(qbTorrent.AddedOn), 0).Format(time.RFC3339)
-	torrent.Status.State = string(qbTorrent.State)
-	torrent.Status.Progress = fmt.Sprintf("%.2f%%", qbTorrent.Progress*100)
-	torrent.Status.Ratio = fmt.Sprintf("%.3f", qbTorrent.Ratio)
-	torrent.Status.Speed.DlSpeed = qbTorrent.Dlspeed
-	torrent.Status.Speed.UpSpeed = qbTorrent.Upspeed
-	torrent.Status.Eta = (time.Duration(qbTorrent.Eta) * time.Second).String()
-	torrent.Status.Size = HumanReadableSize(int64(qbTorrent.Size))
-	torrent.Status.Data.Downloaded = HumanReadableSize(qbTorrent.Downloaded)
-	torrent.Status.Data.Uploaded = HumanReadableSize(qbTorrent.Uploaded)
-	torrent.Status.Peers.Leechers = fmt.Sprintf("%d/%d", qbTorrent.NumLeechs, qbTorrent.NumIncomplete)
-	torrent.Status.Peers.Seeders = fmt.Sprintf("%d/%d", qbTorrent.NumSeeds, qbTorrent.NumComplete)
-	return r.Status().Update(ctx, torrent)
+	}, r.Status().Update(ctx, &torrent)
 }
 
 func (r *TorrentReconciler) deleteTorrent(ctx context.Context, torrent *torrentv1alpha1.Torrent) error {
@@ -191,22 +217,23 @@ func (r *TorrentReconciler) deleteTorrent(ctx context.Context, torrent *torrentv
 	}
 
 	// Connect to server
-	qb, err := r.connectToServer(ctx, torrent.Spec.ServerRef)
+	btServer, err := r.connectToServer(ctx, torrent.Spec.ServerRef)
 	if err != nil {
 		return err
 	}
 
 	logger.Info("Delete torrent", "Name", torrent.Name, "KeepFiles", torrent.Spec.KeepFiles)
-	return qb.Torrent.DeleteTorrents([]string{torrent.Spec.Hash}, !torrent.Spec.KeepFiles)
+	return btServer.DeleteTorrent(torrent.Spec.Hash, torrent.Spec.KeepFiles)
+	//return btServer.Torrent.DeleteTorrents([]string{torrent.Spec.Hash}, !torrent.Spec.KeepFiles)
 }
 
-func (r *TorrentReconciler) connectToServer(ctx context.Context, ref torrentv1alpha1.ServerRef) (*qbt.Client, error) {
-	qBittorrent := &torrentv1alpha1.QBittorrentServer{}
-	if err := r.Get(ctx, ref.GetNamespacedName(), qBittorrent); err != nil {
+func (r *TorrentReconciler) connectToServer(ctx context.Context, ref torrentv1alpha1.ServerRef) (helper.BtServerInterface, error) {
+	k8sBtServer := &torrentv1alpha1.BtServer{}
+	if err := r.Get(ctx, ref.GetNamespacedName(), k8sBtServer); err != nil {
 		return nil, err
 	}
 
-	return getServer(ctx, qBittorrent)
+	return getBtServer(ctx, k8sBtServer)
 }
 
 // SetupWithManager sets up the controller with the Manager.

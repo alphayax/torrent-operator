@@ -4,19 +4,22 @@ kind: CustomResourceDefinition
 metadata:
   annotations:
     controller-gen.kubebuilder.io/version: v0.14.0
-  name: qbittorrentservers.torrent.alphayax.com
+  name: btservers.torrent.alphayax.com
 spec:
   group: torrent.alphayax.com
   names:
-    kind: QBittorrentServer
-    listKind: QBittorrentServerList
-    plural: qbittorrentservers
-    singular: qbittorrentserver
+    kind: BtServer
+    listKind: BtServerList
+    plural: btservers
+    singular: btserver
   scope: Namespaced
   versions:
   - additionalPrinterColumns:
     - jsonPath: .status.state
       name: Status
+      type: string
+    - jsonPath: .spec.type
+      name: Type
       type: string
     - jsonPath: .spec.serverUri
       name: Uri
@@ -27,7 +30,7 @@ spec:
     name: v1alpha1
     schema:
       openAPIV3Schema:
-        description: QBittorrentServer is the Schema for the qbittorrentservers API
+        description: BtServer is the Schema for the btservers API
         properties:
           apiVersion:
             description: |-
@@ -47,7 +50,7 @@ spec:
           metadata:
             type: object
           spec:
-            description: QBittorrentServerSpec defines the DESIRED state of QBittorrentServer
+            description: BtServerSpec defines the DESIRED state of BtServer
             properties:
               credentials:
                 properties:
@@ -84,11 +87,14 @@ spec:
                 type: object
               serverUri:
                 type: string
+              type:
+                type: string
             required:
             - serverUri
+            - type
             type: object
           status:
-            description: QBittorrentServerStatus defines the OBSERVED state of QBittorrentServer
+            description: BtServerStatus defines the OBSERVED state of BtServer
             properties:
               serverVersion:
                 type: string

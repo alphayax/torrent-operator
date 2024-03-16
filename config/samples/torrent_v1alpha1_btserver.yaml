@@ -1,0 +1,24 @@
+apiVersion: torrent.alphayax.com/v1alpha1
+kind: BtServer
+metadata:
+  labels:
+    app.kubernetes.io/name: btserver
+    app.kubernetes.io/instance: btserver-sample
+    app.kubernetes.io/part-of: torrent-operator
+    app.kubernetes.io/managed-by: kustomize
+    app.kubernetes.io/created-by: torrent-operator
+  name: btserver-sample
+spec:
+  serverUri: https://bt.inea.alphayax.com
+  type: qBittorrent
+  credentials:
+    #username: ""
+    #password: ""
+    usernameFromSecret:
+      key: user
+      name: qbt-cred
+      namespace: tools
+    passwordFromSecret:
+      key: pass
+      name: qbt-cred
+      namespace: tools

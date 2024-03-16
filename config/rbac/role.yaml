@@ -7,7 +7,7 @@ rules:
 - apiGroups:
   - torrent.alphayax.com
   resources:
-  - qbittorrentservers
+  - btservers
   verbs:
   - create
   - delete
@@ -19,13 +19,13 @@ rules:
 - apiGroups:
   - torrent.alphayax.com
   resources:
-  - qbittorrentservers/finalizers
+  - btservers/finalizers
   verbs:
   - update
 - apiGroups:
   - torrent.alphayax.com
   resources:
-  - qbittorrentservers/status
+  - btservers/status
   verbs:
   - get
   - patch

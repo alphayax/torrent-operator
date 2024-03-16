@@ -23,7 +23,7 @@ resources:
   controller: true
   domain: alphayax.com
   group: torrent
-  kind: QBittorrentServer
+  kind: BtServer
   path: github.com/alphayax/torrent-operator/api/v1alpha1
   version: v1alpha1
 version: "3"

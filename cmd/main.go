@@ -129,11 +129,11 @@ func main() {
 		setupLog.Error(err, "unable to create controller", "controller", "Torrent")
 		os.Exit(1)
 	}
-	if err = (&controller.QBittorrentServerReconciler{
+	if err = (&controller.BtServerReconciler{
 		Client: mgr.GetClient(),
 		Scheme: mgr.GetScheme(),
 	}).SetupWithManager(mgr); err != nil {
-		setupLog.Error(err, "unable to create controller", "controller", "QBittorrentServer")
+		setupLog.Error(err, "unable to create controller", "controller", "BtServer")
 		os.Exit(1)
 	}
 	//+kubebuilder:scaffold:builder

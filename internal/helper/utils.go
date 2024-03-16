@@ -1,8 +1,8 @@
-package controller
+package helper
 
 import "fmt"
 
-// HumanReadableSize Convert a size in bytes to a human readable size
+// HumanReadableSize Convert a size in bytes to a human-readable size
 func HumanReadableSize(sizeInit int64) string {
 	// Handle zero size as a special case
 	if sizeInit == 0 {
