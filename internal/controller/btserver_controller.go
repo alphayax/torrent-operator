@@ -100,7 +100,7 @@ func (r *BtServerReconciler) Reconcile(ctx context.Context, req ctrl.Request) (c
 		return ctrl.Result{}, err
 	}
 
-	version, err := btClient.GetAPIVersion()
+	version, err := btClient.GetAPIVersion(ctx)
 	if err != nil {
 		return ctrl.Result{}, err
 	}
@@ -149,7 +149,7 @@ func (r *BtServerReconciler) Reconcile(ctx context.Context, req ctrl.Request) (c
 }
 
 func (r *BtServerReconciler) getServerTorrents(ctx context.Context, qb helper.BtServerInterface) (map[string]*helper.Torrent, error) {
-	torrentList, err := qb.GetTorrents()
+	torrentList, err := qb.GetTorrents(ctx)
 	if err != nil {
 		return nil, err
 	}

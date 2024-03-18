@@ -88,20 +88,8 @@ func (r *TorrentReconciler) Reconcile(ctx context.Context, req ctrl.Request) (ct
 	// In case of new torrent (Hash is empty)
 	if torrent.Spec.Hash == "" && torrent.Spec.URL != "" {
 		logger.Info("--- Add Torrent (via URL)", "URL", torrent.Spec.URL)
-		/*
-			URLs := []string{torrent.Spec.URL}
-			torrentOptions := &model.AddTorrentsOptions{
-				Tags:     fmt.Sprintf("k8s-%s", req.Name),
-				Savepath: torrent.Spec.DownloadDir,
-				Rename:   torrent.Spec.Name,
-				Paused:   strconv.FormatBool(torrent.Spec.Paused),
-			}
-			if err := btServer.Torrent.AddURLs(URLs, torrentOptions); err != nil {
-				logger.Error(err, "!!! Error while adding torrent")
-			}
-		*/
 
-		if err := btServer.AddTorrentByURL(torrent.Spec.URL, &torrent); err != nil {
+		if err := btServer.AddTorrentByURL(ctx, torrent.Spec.URL, &torrent); err != nil {
 			logger.Error(err, "Unable to add torrent")
 		}
 
@@ -113,93 +101,46 @@ func (r *TorrentReconciler) Reconcile(ctx context.Context, req ctrl.Request) (ct
 	}
 
 	// Refresh current torrent state
-	torrentInit, err := btServer.GetTorrent(torrent.Spec.Hash)
+	torrentInit, err := btServer.GetTorrent(ctx, torrent.Spec.Hash)
 	if err != nil {
 		return ctrl.Result{}, err
 	}
-	/*
-		list, err := btServer.Torrent.GetList(&model.GetTorrentListOptions{Hashes: torrent.Spec.Hash})
-		if err != nil {
-			return ctrl.Result{}, err
-		}
-		if len(list) == 0 {
-			// TODO: Better handeling: We don't requeue here, but we should handle the thing better
-			return ctrl.Result{}, nil
-		}
-		torrentInit := list[0]
-	*/
 
 	// Pause/Resume Torrent
 	if torrent.Spec.Paused == true && !torrentInit.IsPaused {
-		if err := btServer.StopTorrent(torrent.Spec.Hash); err != nil {
+		if err := btServer.StopTorrent(ctx, torrent.Spec.Hash); err != nil {
 			return ctrl.Result{}, err
 		}
 		logger.Info("--- Torrent STOPPED", "Hash", torrent.Spec.Hash)
 	}
 	if torrent.Spec.Paused == false && torrentInit.IsPaused {
-		if err := btServer.ResumeTorrent(torrent.Spec.Hash); err != nil {
+		if err := btServer.ResumeTorrent(ctx, torrent.Spec.Hash); err != nil {
 			return ctrl.Result{}, err
 		}
 		logger.Info("--- Resume RESUMED", "Hash", torrent.Spec.Hash)
 	}
-	/*
-		if torrent.Spec.Paused == true && (torrentInit.State != "pausedUP" && torrentInit.State != "pausedDL") {
-			if err := btServer.Torrent.StopTorrents([]string{torrent.Spec.Hash}); err != nil {
-				return ctrl.Result{}, err
-			}
-			logger.Info("--- Torrent STOPPED", "Hash", torrent.Spec.Hash)
-		} else if torrent.Spec.Paused == false && (torrentInit.State == "pausedUP" || torrentInit.State == "pausedDL") {
-			if err := btServer.Torrent.ResumeTorrents([]string{torrent.Spec.Hash}); err != nil {
-				return ctrl.Result{}, err
-			}
-			logger.Info("--- Resume RESUMED", "Hash", torrent.Spec.Hash)
-		}
-	*/
 
 	// Update Name
 	if torrentInit.Name != torrent.Spec.Name {
-		if err := btServer.RenameTorrent(torrent.Spec.Hash, torrent.Spec.Name); err != nil {
+		if err := btServer.RenameTorrent(ctx, torrent.Spec.Hash, torrent.Spec.Name); err != nil {
 			return ctrl.Result{}, err
 		}
-		/*
-			if err := btServer.Torrent.SetName(torrent.Spec.Hash, torrent.Spec.Name); err != nil {
-				return ctrl.Result{}, err
-			}
-		*/
 		logger.Info("--- Torrent RENAMED", "Hash", torrent.Spec.Hash, "NewName", torrent.Spec.Name)
 	}
 
 	// Update Folder
 	if torrentInit.DownloadDir != torrent.Spec.DownloadDir {
-		if err := btServer.MoveTorrent(torrent.Spec.Hash, torrent.Spec.DownloadDir); err != nil {
+		if err := btServer.MoveTorrent(ctx, torrent.Spec.Hash, torrent.Spec.DownloadDir); err != nil {
 			return ctrl.Result{}, err
 		}
 		logger.Info("--- Torrent MOVED", "Hash", torrent.Spec.Hash, "NewFolder", torrent.Spec.DownloadDir)
 	}
-	/*
-		if torrentInit.SavePath != torrent.Spec.DownloadDir {
-			if err := btServer.Torrent.SetLocations([]string{torrent.Spec.Hash}, torrent.Spec.DownloadDir); err != nil {
-				return ctrl.Result{}, err
-			}
-			logger.Info("--- Torrent MOVED", "Hash", torrent.Spec.Hash, "NewFolder", torrent.Spec.DownloadDir)
-		}
-	*/
 
 	// Update State
-	torrentStatus, err := btServer.GetTorrentStatus(torrent.Spec.Hash)
+	torrentStatus, err := btServer.GetTorrentStatus(ctx, torrent.Spec.Hash)
 	if err != nil {
 		return ctrl.Result{}, err
 	}
-	/*
-		list, err = btServer.Torrent.GetList(&model.GetTorrentListOptions{Hashes: torrent.Spec.Hash})
-		if err != nil {
-			return ctrl.Result{}, err
-		}
-		if len(list) == 0 {
-			// TODO: Better handeling: We don't requeue here, but we should handle the thing better
-			return ctrl.Result{}, nil
-		}
-	*/
 
 	torrent.Status = torrentStatus
 	return ctrl.Result{
@@ -223,8 +164,7 @@ func (r *TorrentReconciler) deleteTorrent(ctx context.Context, torrent *torrentv
 	}
 
 	logger.Info("Delete torrent", "Name", torrent.Name, "KeepFiles", torrent.Spec.KeepFiles)
-	return btServer.DeleteTorrent(torrent.Spec.Hash, torrent.Spec.KeepFiles)
-	//return btServer.Torrent.DeleteTorrents([]string{torrent.Spec.Hash}, !torrent.Spec.KeepFiles)
+	return btServer.DeleteTorrent(ctx, torrent.Spec.Hash, torrent.Spec.KeepFiles)
 }
 
 func (r *TorrentReconciler) connectToServer(ctx context.Context, ref torrentv1alpha1.ServerRef) (helper.BtServerInterface, error) {

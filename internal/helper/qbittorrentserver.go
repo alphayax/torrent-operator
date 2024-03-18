@@ -1,6 +1,7 @@
 package helper
 
 import (
+	"context"
 	"fmt"
 	qbt "github.com/KnutZuidema/go-qbittorrent"
 	"github.com/KnutZuidema/go-qbittorrent/pkg/model"
@@ -24,11 +25,11 @@ func (q *QBittorrentServer) Login(username string, password string) error {
 	return q.client.Login(username, password)
 }
 
-func (q *QBittorrentServer) GetAPIVersion() (string, error) {
+func (q *QBittorrentServer) GetAPIVersion(ctx context.Context) (string, error) {
 	return q.client.Application.GetAPIVersion()
 }
 
-func (q *QBittorrentServer) GetTorrents() ([]*Torrent, error) {
+func (q *QBittorrentServer) GetTorrents(ctx context.Context) ([]*Torrent, error) {
 	qbtTorrents, err := q.client.Torrent.GetList(nil)
 	if err != nil {
 		return nil, err
@@ -48,7 +49,7 @@ func (q *QBittorrentServer) GetTorrents() ([]*Torrent, error) {
 	return torrents, nil
 }
 
-func (q *QBittorrentServer) GetTorrent(hash string) (*Torrent, error) {
+func (q *QBittorrentServer) GetTorrent(ctx context.Context, hash string) (*Torrent, error) {
 	list, err := q.client.Torrent.GetList(&model.GetTorrentListOptions{Hashes: hash})
 	if err != nil {
 		return nil, err
@@ -66,7 +67,7 @@ func (q *QBittorrentServer) GetTorrent(hash string) (*Torrent, error) {
 	}, nil
 }
 
-func (q *QBittorrentServer) AddTorrentByURL(torrentUrl string, torrent *torrentv1alpha1.Torrent) error {
+func (q *QBittorrentServer) AddTorrentByURL(ctx context.Context, torrentUrl string, torrent *torrentv1alpha1.Torrent) error {
 	URLs := []string{torrentUrl}
 	options := &model.AddTorrentsOptions{
 		Tags:     fmt.Sprintf("k8s-%s", torrent.Name),
@@ -77,27 +78,27 @@ func (q *QBittorrentServer) AddTorrentByURL(torrentUrl string, torrent *torrentv
 	return q.client.Torrent.AddURLs(URLs, options)
 }
 
-func (q *QBittorrentServer) StopTorrent(hash string) error {
+func (q *QBittorrentServer) StopTorrent(ctx context.Context, hash string) error {
 	return q.client.Torrent.StopTorrents([]string{hash})
 }
 
-func (q *QBittorrentServer) ResumeTorrent(hash string) error {
+func (q *QBittorrentServer) ResumeTorrent(ctx context.Context, hash string) error {
 	return q.client.Torrent.ResumeTorrents([]string{hash})
 }
 
-func (q *QBittorrentServer) DeleteTorrent(hash string, keepFiles bool) error {
+func (q *QBittorrentServer) DeleteTorrent(ctx context.Context, hash string, keepFiles bool) error {
 	return q.client.Torrent.DeleteTorrents([]string{hash}, !keepFiles)
 }
 
-func (q *QBittorrentServer) RenameTorrent(hash string, name string) error {
+func (q *QBittorrentServer) RenameTorrent(ctx context.Context, hash string, name string) error {
 	return q.client.Torrent.SetName(hash, name)
 }
 
-func (q *QBittorrentServer) MoveTorrent(hash string, destination string) error {
+func (q *QBittorrentServer) MoveTorrent(ctx context.Context, hash string, destination string) error {
 	return q.client.Torrent.SetLocations([]string{hash}, destination)
 }
 
-func (q *QBittorrentServer) GetTorrentStatus(hash string) (torrentv1alpha1.TorrentStatus, error) {
+func (q *QBittorrentServer) GetTorrentStatus(ctx context.Context, hash string) (torrentv1alpha1.TorrentStatus, error) {
 	list, err := q.client.Torrent.GetList(&model.GetTorrentListOptions{Hashes: hash})
 	if err != nil {
 		return torrentv1alpha1.TorrentStatus{}, err
