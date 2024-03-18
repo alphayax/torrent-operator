@@ -65,6 +65,11 @@ func registerServer(ctx context.Context, k8sBtServer *torrentv1alpha1.BtServer) 
 		case "qBittorrent":
 			btServers[serverKey] = helper.NewQBittorrentServer(k8sBtServer.Spec)
 			break
+		case "transmission":
+			btServers[serverKey] = helper.NewTransmissionServer(k8sBtServer.Spec)
+			break
+		default:
+			return fmt.Errorf("unsupported server type: %s", k8sBtServer.Spec.Type)
 		}
 
 		// Login
