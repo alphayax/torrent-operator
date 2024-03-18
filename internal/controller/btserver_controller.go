@@ -154,7 +154,7 @@ func (r *BtServerReconciler) getServerTorrents(ctx context.Context, qb helper.Bt
 		return nil, err
 	}
 
-	serverTorrents := make(map[string]*helper.Torrent)
+	serverTorrents := make(map[string]*helper.Torrent, len(torrentList))
 	for _, torrent := range torrentList {
 		serverTorrents[torrent.Hash] = torrent
 	}

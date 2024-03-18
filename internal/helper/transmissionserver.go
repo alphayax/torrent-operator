@@ -22,11 +22,9 @@ func NewTransmissionServer(btServerSpec torrentv1alpha1.BtServerSpec) *Transmiss
 }
 
 func (s *TransmissionServer) Login(username string, password string) error {
-	transmissionUrl := fmt.Sprintf("https://%s:%s@%s/transmission/rpc", username, password, s.transmissionRpcUrl)
+	transmissionUrl := fmt.Sprintf("%s/transmission/rpc", s.transmissionRpcUrl)
 	endpoint, err := url.Parse(transmissionUrl)
-
-	// TODO: Tester le truc suivant pour pas se faire chier avec l'url
-	//endpoint.User = url.UserPassword(username, password)
+	endpoint.User = url.UserPassword(username, password)
 
 	if err != nil {
 		return err
@@ -65,14 +63,14 @@ func (s *TransmissionServer) GetTorrents() ([]*Torrent, error) {
 	}
 
 	torrents := make([]*Torrent, len(trTorrents))
-	for _, t := range trTorrents {
-		torrents = append(torrents, &Torrent{
+	for i, t := range trTorrents {
+		torrents[i] = &Torrent{
 			Hash:        *t.HashString,
 			Name:        *t.Name,
 			DownloadDir: *t.DownloadDir,
 			IsPaused:    *t.Status == transmissionrpc.TorrentStatusStopped,
 			Tags:        *t.Comment,
-		})
+		}
 	}
 	return torrents, nil
 }
