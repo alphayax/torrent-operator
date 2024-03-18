@@ -142,7 +142,7 @@ func (r *TorrentReconciler) Reconcile(ctx context.Context, req ctrl.Request) (ct
 		return ctrl.Result{}, err
 	}
 
-	torrent.Status = torrentStatus
+	torrent.Status = *torrentStatus
 	return ctrl.Result{
 		RequeueAfter: 1 * time.Minute,
 	}, r.Status().Update(ctx, &torrent)

@@ -16,5 +16,5 @@ type BtServerInterface interface {
 	DeleteTorrent(ctx context.Context, hash string, keepFiles bool) error
 	RenameTorrent(ctx context.Context, hash string, name string) error
 	MoveTorrent(ctx context.Context, hash string, destination string) error
-	GetTorrentStatus(ctx context.Context, hash string) (torrentv1alpha1.TorrentStatus, error)
+	GetTorrentStatus(ctx context.Context, hash string) (*torrentv1alpha1.TorrentStatus, error)
 }

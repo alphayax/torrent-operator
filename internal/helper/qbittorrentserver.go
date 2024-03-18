@@ -98,19 +98,19 @@ func (q *QBittorrentServer) MoveTorrent(ctx context.Context, hash string, destin
 	return q.client.Torrent.SetLocations([]string{hash}, destination)
 }
 
-func (q *QBittorrentServer) GetTorrentStatus(ctx context.Context, hash string) (torrentv1alpha1.TorrentStatus, error) {
+func (q *QBittorrentServer) GetTorrentStatus(ctx context.Context, hash string) (*torrentv1alpha1.TorrentStatus, error) {
 	list, err := q.client.Torrent.GetList(&model.GetTorrentListOptions{Hashes: hash})
 	if err != nil {
-		return torrentv1alpha1.TorrentStatus{}, err
+		return nil, err
 	}
 	if len(list) == 0 {
-		return torrentv1alpha1.TorrentStatus{}, fmt.Errorf("torrent with hash '%s' not found", hash)
+		return nil, fmt.Errorf("torrent with hash '%s' not found", hash)
 	}
 	if err != nil {
-		return torrentv1alpha1.TorrentStatus{}, err
+		return nil, err
 	}
 	qbTorrent := list[0]
-	return torrentv1alpha1.TorrentStatus{
+	return &torrentv1alpha1.TorrentStatus{
 		AddedOn:  time.Unix(int64(qbTorrent.AddedOn), 0).Format(time.RFC3339),
 		State:    string(qbTorrent.State),
 		Progress: fmt.Sprintf("%.2f%%", qbTorrent.Progress*100),

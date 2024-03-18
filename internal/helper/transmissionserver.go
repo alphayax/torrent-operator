@@ -133,10 +133,10 @@ func (s *TransmissionServer) MoveTorrent(ctx context.Context, hash string, desti
 	return s.client.TorrentRenamePathHash(ctx, hash, destination, "")
 }
 
-func (s *TransmissionServer) GetTorrentStatus(ctx context.Context, hash string) (torrentv1alpha1.TorrentStatus, error) {
+func (s *TransmissionServer) GetTorrentStatus(ctx context.Context, hash string) (*torrentv1alpha1.TorrentStatus, error) {
 	trTorrent, err := s.getTransmissionTorrentByHash(ctx, hash)
 	if err != nil {
-		return torrentv1alpha1.TorrentStatus{}, err
+		return nil, err
 	}
 
 	var seederCount, leecherCount int64
@@ -145,9 +145,9 @@ func (s *TransmissionServer) GetTorrentStatus(ctx context.Context, hash string) 
 		leecherCount += trackerStats.LeecherCount
 	}
 
-	return torrentv1alpha1.TorrentStatus{
+	return &torrentv1alpha1.TorrentStatus{
 		AddedOn:  trTorrent.AddedDate.String(),
-		State:    getHumanReadableStatus(*trTorrent.Status),
+		State:    s.getHumanReadableStatus(*trTorrent.Status),
 		Ratio:    strconv.FormatFloat(*trTorrent.UploadRatio, 'f', -1, 64),
 		Progress: strconv.FormatFloat(*trTorrent.PercentDone, 'f', -1, 64),
 		Size:     (*trTorrent.TotalSize).GetHumanSizeRepresentation(),
@@ -167,7 +167,7 @@ func (s *TransmissionServer) GetTorrentStatus(ctx context.Context, hash string) 
 	}, nil
 }
 
-func getHumanReadableStatus(status transmissionrpc.TorrentStatus) string {
+func (s *TransmissionServer) getHumanReadableStatus(status transmissionrpc.TorrentStatus) string {
 	switch status {
 	case transmissionrpc.TorrentStatusStopped:
 		return "Stopped"
