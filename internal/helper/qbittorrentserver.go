@@ -112,7 +112,7 @@ func (q *QBittorrentServer) GetTorrentStatus(ctx context.Context, hash string) (
 	qbTorrent := list[0]
 	return &torrentv1alpha1.TorrentStatus{
 		AddedOn:  time.Unix(int64(qbTorrent.AddedOn), 0).Format(time.RFC3339),
-		State:    string(qbTorrent.State),
+		State:    q.getHumanReadableStatus(qbTorrent.State),
 		Progress: fmt.Sprintf("%.2f%%", qbTorrent.Progress*100),
 		Ratio:    fmt.Sprintf("%.3f", qbTorrent.Ratio),
 		Speed: torrentv1alpha1.TorrentStatusSpeed{
@@ -130,4 +130,55 @@ func (q *QBittorrentServer) GetTorrentStatus(ctx context.Context, hash string) (
 			Seeders:  fmt.Sprintf("%d/%d", qbTorrent.NumSeeds, qbTorrent.NumComplete),
 		},
 	}, nil
+}
+
+func (q *QBittorrentServer) getHumanReadableStatus(status model.TorrentState) string {
+	switch status {
+	case model.StateMissingFiles:
+		fallthrough
+	case model.StateError:
+		return "Error"
+
+	case model.StateCheckingUP:
+		fallthrough
+	case model.StateCheckingResumeData:
+		return "Checking"
+
+	case model.StatePausedUP:
+		fallthrough
+	case model.StatePausedDL:
+		return "Paused"
+
+	case model.StateUploading:
+		fallthrough
+	case model.StateQueuedUP:
+		fallthrough
+	case model.StateStalledUP:
+		fallthrough
+	case model.StateForcedUP:
+		return "Seeding"
+
+	case model.StateDownloading:
+		fallthrough
+	case model.StateQueuedDL:
+		fallthrough
+	case model.StateStalledDL:
+		fallthrough
+	case model.StateCheckingDL:
+		fallthrough
+	case model.StateForceDL:
+		return "Downloading"
+
+	case model.StateAllocating:
+		fallthrough
+	case model.StateMetaDL:
+		fallthrough
+	case model.StateMoving:
+		return "Warming"
+
+	case model.StateUnknown:
+		fallthrough
+	default:
+		return "Unknown"
+	}
 }
