@@ -144,6 +144,13 @@ func (s *TransmissionServer) GetTorrentStatus(hash string) (torrentv1alpha1.Torr
 	if err != nil {
 		return torrentv1alpha1.TorrentStatus{}, err
 	}
+
+	var seederCount, leecherCount int64
+	for _, trackerStats := range trTorrent.TrackerStats {
+		seederCount += trackerStats.SeederCount
+		leecherCount += trackerStats.LeecherCount
+	}
+
 	return torrentv1alpha1.TorrentStatus{
 		AddedOn:  trTorrent.AddedDate.String(),
 		State:    getHumanReadableStatus(*trTorrent.Status),
@@ -156,8 +163,8 @@ func (s *TransmissionServer) GetTorrentStatus(hash string) (torrentv1alpha1.Torr
 			UpSpeed: int(*trTorrent.RateUpload),
 		},
 		Peers: torrentv1alpha1.TorrentStatusPeers{
-			Leechers: fmt.Sprintf("%d/%d", trTorrent.PeersGettingFromUs, trTorrent.PeersConnected),
-			Seeders:  fmt.Sprintf("%d/%d", trTorrent.PeersSendingToUs, trTorrent.MaxConnectedPeers),
+			Leechers: fmt.Sprintf("%d/%d", *trTorrent.PeersGettingFromUs, leecherCount),
+			Seeders:  fmt.Sprintf("%d/%d", *trTorrent.PeersSendingToUs, seederCount),
 		},
 		Data: torrentv1alpha1.TorrentStatusData{
 			Downloaded: HumanReadableSize(*trTorrent.DownloadedEver),
@@ -173,15 +180,15 @@ func getHumanReadableStatus(status transmissionrpc.TorrentStatus) string {
 	case transmissionrpc.TorrentStatusCheckWait:
 		return "CheckWait"
 	case transmissionrpc.TorrentStatusCheck:
-		return "Check"
+		return "Checking"
 	case transmissionrpc.TorrentStatusDownloadWait:
 		return "DownloadWait"
 	case transmissionrpc.TorrentStatusDownload:
-		return "Download"
+		return "Downloading"
 	case transmissionrpc.TorrentStatusSeedWait:
 		return "SeedWait"
 	case transmissionrpc.TorrentStatusSeed:
-		return "Seed"
+		return "Seeding"
 	case transmissionrpc.TorrentStatusIsolated:
 		return "Isolated"
 	default:

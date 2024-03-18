@@ -9,9 +9,9 @@ Manage your torrents with a kubernetes operator.
 
 Works with:
 - [qBittorrent](https://www.qbittorrent.org/)
+- [Transmission](https://transmissionbt.com/)
 
 Will work in the future with:
-- [Transmission](https://transmissionbt.com/)
 - [Deluge](https://deluge-torrent.org/)
 
 
