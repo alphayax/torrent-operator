@@ -126,7 +126,11 @@ func (s *TransmissionServer) DeleteTorrent(ctx context.Context, hash string, kee
 }
 
 func (s *TransmissionServer) RenameTorrent(ctx context.Context, hash string, name string) error {
-	return s.client.TorrentRenamePathHash(ctx, hash, "", name)
+	trTorrent, err := s.getTransmissionTorrentByHash(ctx, hash)
+	if err != nil {
+		return err
+	}
+	return s.client.TorrentRenamePath(ctx, *trTorrent.ID, *trTorrent.Name, name)
 }
 
 func (s *TransmissionServer) MoveTorrent(ctx context.Context, hash string, destination string) error {
