@@ -15,10 +15,10 @@ spec:
     #username: ""
     #password: ""
     usernameFromSecret:
-      key: user
-      name: qbt-cred
+      key: qbt-user
+      name: bt-creds
       namespace: tools
     passwordFromSecret:
-      key: pass
-      name: qbt-cred
+      key: qbt-pass
+      name: bt-creds
       namespace: tools
