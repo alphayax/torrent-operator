@@ -7,18 +7,18 @@ metadata:
     app.kubernetes.io/part-of: torrent-operator
     app.kubernetes.io/managed-by: kustomize
     app.kubernetes.io/created-by: torrent-operator
-  name: btserver-sample
+  name: transmission
 spec:
-  serverUri: https://bt.inea.alphayax.com
-  type: qBittorrent
+  serverUri: "https://transmission.inea.alphayax.com"
+  type: transmission
   credentials:
     #username: ""
     #password: ""
     usernameFromSecret:
-      key: user
-      name: qbt-cred
+      key: tr-user
+      name: bt-creds
       namespace: tools
     passwordFromSecret:
-      key: pass
-      name: qbt-cred
+      key: tr-pass
+      name: bt-creds
       namespace: tools
