@@ -134,7 +134,7 @@ func (s *TransmissionServer) RenameTorrent(ctx context.Context, hash string, nam
 }
 
 func (s *TransmissionServer) MoveTorrent(ctx context.Context, hash string, destination string) error {
-	return s.client.TorrentRenamePathHash(ctx, hash, destination, "")
+	return s.client.TorrentSetLocationHash(ctx, hash, destination, true)
 }
 
 func (s *TransmissionServer) GetTorrentStatus(ctx context.Context, hash string) (*torrentv1alpha1.TorrentStatus, error) {
