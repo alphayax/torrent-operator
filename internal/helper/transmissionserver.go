@@ -11,7 +11,7 @@ import (
 )
 
 type TransmissionServer struct {
-	transmissionRpcUrl string // Something like "127.0.0.1:9091" // TODO: Do better. Handle url + scheme
+	transmissionRpcUrl string
 	client             *transmissionrpc.Client
 }
 
@@ -151,7 +151,7 @@ func (s *TransmissionServer) GetTorrentStatus(ctx context.Context, hash string) 
 
 	return &torrentv1alpha1.TorrentStatus{
 		AddedOn:  trTorrent.AddedDate.String(),
-		State:    s.getHumanReadableStatus(*trTorrent.Status),
+		State:    s.getHumanReadableStatus(*trTorrent.Status).String(),
 		Ratio:    strconv.FormatFloat(*trTorrent.UploadRatio, 'f', -1, 64),
 		Progress: strconv.FormatFloat(*trTorrent.PercentDone, 'f', -1, 64),
 		Size:     (*trTorrent.TotalSize).GetHumanSizeRepresentation(),
@@ -171,25 +171,25 @@ func (s *TransmissionServer) GetTorrentStatus(ctx context.Context, hash string) 
 	}, nil
 }
 
-func (s *TransmissionServer) getHumanReadableStatus(status transmissionrpc.TorrentStatus) string {
+func (s *TransmissionServer) getHumanReadableStatus(status transmissionrpc.TorrentStatus) TorrentState {
 	switch status {
 	case transmissionrpc.TorrentStatusStopped:
-		return "Stopped"
+		return StatePaused
 	case transmissionrpc.TorrentStatusCheckWait:
-		return "CheckWait"
+		return StateChecking
 	case transmissionrpc.TorrentStatusCheck:
-		return "Checking"
+		return StateChecking
 	case transmissionrpc.TorrentStatusDownloadWait:
-		return "DownloadWait"
+		return StateDownloading
 	case transmissionrpc.TorrentStatusDownload:
-		return "Downloading"
+		return StateDownloading
 	case transmissionrpc.TorrentStatusSeedWait:
-		return "SeedWait"
+		return StateSeeding
 	case transmissionrpc.TorrentStatusSeed:
-		return "Seeding"
+		return StateSeeding
 	case transmissionrpc.TorrentStatusIsolated:
-		return "Isolated"
+		return StateUnknown
 	default:
-		return "Unknown"
+		return StateUnknown
 	}
 }
