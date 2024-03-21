@@ -78,7 +78,7 @@ func (s *TransmissionServer) getTransmissionTorrentByHash(ctx context.Context, h
 		return nil, err
 	}
 	if len(trTorrents) == 0 {
-		return nil, fmt.Errorf("torrent with hash '%s' not found", hash)
+		return nil, ErrTorrentNotFound
 	}
 	return &trTorrents[0], nil
 }

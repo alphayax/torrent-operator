@@ -55,7 +55,7 @@ func (q *QBittorrentServer) GetTorrent(ctx context.Context, hash string) (*Torre
 		return nil, err
 	}
 	if len(list) == 0 {
-		return nil, fmt.Errorf("torrent with hash '%s' not found", hash)
+		return nil, ErrTorrentNotFound
 	}
 	qbtTorrent := list[0]
 	return &Torrent{

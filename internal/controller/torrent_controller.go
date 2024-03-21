@@ -18,6 +18,7 @@ package controller
 
 import (
 	"context"
+	e "errors"
 	torrentv1alpha1 "github.com/alphayax/torrent-operator/api/v1alpha1"
 	"github.com/alphayax/torrent-operator/internal/helper"
 	"k8s.io/apimachinery/pkg/api/errors"
@@ -103,6 +104,10 @@ func (r *TorrentReconciler) Reconcile(ctx context.Context, req ctrl.Request) (ct
 	// Refresh current torrent state
 	torrentInit, err := btServer.GetTorrent(ctx, torrent.Spec.Hash)
 	if err != nil {
+		if e.Is(err, helper.ErrTorrentNotFound) && torrent.Spec.ManagedBy == "btServer" {
+			logger.Info("Torrent removed by btServer. Removing from k8s", "Hash", torrent.Spec.Hash)
+			return ctrl.Result{}, r.Delete(ctx, &torrent)
+		}
 		return ctrl.Result{}, err
 	}
 
