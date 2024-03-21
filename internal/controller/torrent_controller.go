@@ -19,15 +19,17 @@ package controller
 import (
 	"context"
 	e "errors"
-	torrentv1alpha1 "github.com/alphayax/torrent-operator/api/v1alpha1"
-	"github.com/alphayax/torrent-operator/internal/helper"
+	"time"
+
 	"k8s.io/apimachinery/pkg/api/errors"
 	"k8s.io/apimachinery/pkg/runtime"
 	ctrl "sigs.k8s.io/controller-runtime"
 	"sigs.k8s.io/controller-runtime/pkg/client"
 	"sigs.k8s.io/controller-runtime/pkg/controller/controllerutil"
 	"sigs.k8s.io/controller-runtime/pkg/log"
-	"time"
+
+	torrentv1alpha1 "github.com/alphayax/torrent-operator/api/v1alpha1"
+	"github.com/alphayax/torrent-operator/internal/controller/helper"
 )
 
 const TORRENT_FINALIZER = "torrent.bt.alphayax.com/finalizer"

@@ -3,14 +3,16 @@ package controller
 import (
 	"context"
 	"fmt"
-	torrentv1alpha1 "github.com/alphayax/torrent-operator/api/v1alpha1"
-	"github.com/alphayax/torrent-operator/internal/helper"
+	"sync"
+
 	v1 "k8s.io/api/core/v1"
 	"k8s.io/apimachinery/pkg/types"
 	"sigs.k8s.io/controller-runtime/pkg/client"
 	"sigs.k8s.io/controller-runtime/pkg/client/config"
 	"sigs.k8s.io/controller-runtime/pkg/log"
-	"sync"
+
+	torrentv1alpha1 "github.com/alphayax/torrent-operator/api/v1alpha1"
+	"github.com/alphayax/torrent-operator/internal/controller/helper"
 )
 
 var (

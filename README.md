@@ -1,9 +1,9 @@
 [![Go Report Card](https://goreportcard.com/badge/github.com/alphayax/torrent-operator)](https://goreportcard.com/report/github.com/alphayax/torrent-operator)
 [![GoDoc](https://godoc.org/github.com/alphayax/torrent-operator?status.svg)](https://pkg.go.dev/github.com/alphayax/torrent-operator)
 
-# torrent-operator (WIP: WORK IN PROGRESS !!!)
+# torrent-operator
 
-> WIP: I've made this project to test the kubebuilder framework and to learn how to create a kubernetes operator.
+> I've made this project to test the kubebuilder framework and to learn how to create a kubernetes operator. Contributions are welcome.
 
 Manage your torrents with a kubernetes operator.
 
@@ -11,14 +11,10 @@ Works with:
 - [qBittorrent](https://www.qbittorrent.org/)
 - [Transmission](https://transmissionbt.com/)
 
-Will work in the future with:
-- [Deluge](https://deluge-torrent.org/)
-
-
----
 
 ## Description
-// TODO(user): An in-depth paragraph about your project and overview of use
+
+This project is a Kubernetes operator that manages torrents. It allows you to create, update, and delete torrents in a Kubernetes cluster.
 
 ## Getting Started
 
@@ -32,7 +28,7 @@ Will work in the future with:
 **Build and push your image to the location specified by `IMG`:**
 
 ```sh
-make docker-build docker-push IMG=<some-registry>/torrent-operator:tag
+make docker-build docker-push IMG=alphayax/torrent-operator:latest
 ```
 
 **NOTE:** This image ought to be published in the personal registry you specified. 

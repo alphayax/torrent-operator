@@ -30,7 +30,7 @@ import (
 	"sigs.k8s.io/controller-runtime/pkg/log"
 
 	torrentv1alpha1 "github.com/alphayax/torrent-operator/api/v1alpha1"
-	"github.com/alphayax/torrent-operator/internal/helper"
+	"github.com/alphayax/torrent-operator/internal/controller/helper"
 )
 
 const BTSERVER_FINALIZER = "bt-server.bt.alphayax.com/finalizer"
