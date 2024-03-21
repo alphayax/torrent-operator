@@ -9,7 +9,8 @@ metadata:
     app.kubernetes.io/created-by: torrent-operator
   name: transmission
 spec:
-  serverUri: "https://transmission.inea.alphayax.com"
+  # You don't need to add the /transmission/rpc path
+  serverUri: "https://tramission_uri"
   type: transmission
   credentials:
     #username: ""
